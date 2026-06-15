@@ -1,0 +1,130 @@
+const ffmpeg = require('fluent-ffmpeg')
+const path = require('path')
+const os = require('os')
+
+// Font bundled in Docker at /fonts/BarlowCondensed-Bold.ttf
+// Fallback to DejaVu on local dev (apt: fonts-dejavu-core)
+const FONT_PATH = process.env.FONT_PATH || '/fonts/BarlowCondensed-Bold.ttf'
+
+// Escape text for FFmpeg drawtext: colons, backslashes, single quotes
+function escapeDrawtext(text) {
+  return String(text || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/:/g, '\\:')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, ' ')
+    .slice(0, 200) // safety cap
+}
+
+// Build the full filter_complex string for N scenes
+// Each scene: { localPath, type: 'image'|'video', duration, text }
+// Returns { filterComplex, outputLabel, audioLabel }
+function buildFilterComplex(scenes, hasAudio) {
+  const parts = []
+  const FADE_DUR = 0.5
+  const FONT_SIZE = 56
+  const TEXT_Y = 1640 // px from top in 1920px frame (bottom-third)
+  const TEXT_SHADOW = 'shadowcolor=black@0.9:shadowx=2:shadowy=2'
+
+  // Step 1: scale + pad + fps each input
+  scenes.forEach((scene, i) => {
+    let scaleFilter = `[${i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,` +
+      `pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30`
+
+    if (scene.text && scene.text.trim()) {
+      const escaped = escapeDrawtext(scene.text.trim())
+      scaleFilter += `,drawtext=fontfile=${FONT_PATH}:text='${escaped}':` +
+        `fontsize=${FONT_SIZE}:fontcolor=white:${TEXT_SHADOW}:` +
+        `x=(w-text_w)/2:y=${TEXT_Y}`
+    }
+
+    scaleFilter += `[scaled${i}]`
+    parts.push(scaleFilter)
+  })
+
+  // Step 2: xfade transitions between scaled outputs
+  let prevLabel = 'scaled0'
+  let timeOffset = 0
+
+  scenes.forEach((scene, i) => {
+    if (i === 0) {
+      timeOffset = scene.duration
+      return
+    }
+    const outLabel = i === scenes.length - 1 ? 'vout' : `xf${i}`
+    const offset = Math.max(0, timeOffset - FADE_DUR)
+    parts.push(`[${prevLabel}][scaled${i}]xfade=transition=fade:duration=${FADE_DUR}:offset=${offset}[${outLabel}]`)
+    prevLabel = outLabel
+    timeOffset += scene.duration
+  })
+
+  // If only 1 scene, rename scaled0 → vout
+  if (scenes.length === 1) {
+    parts.push(`[scaled0]copy[vout]`)
+  }
+
+  // Step 3: optional audio mix (loop music under video)
+  let audioMap = null
+  if (hasAudio) {
+    const audioIdx = scenes.length // audio is the last input
+    const totalDur = scenes.reduce((acc, s) => acc + s.duration, 0)
+    parts.push(
+      `[${audioIdx}:a]aloop=loop=-1:size=2e+09,atrim=duration=${totalDur},afade=t=out:st=${totalDur - 1}:d=1,volume=0.3[aout]`
+    )
+    audioMap = '[aout]'
+  }
+
+  return {
+    filterComplex: parts.join(';'),
+    outputLabel: '[vout]',
+    audioLabel: audioMap
+  }
+}
+
+// Run the full FFmpeg encode. Returns path to output MP4.
+function encodeVideo(scenes, audioPath) {
+  return new Promise((resolve, reject) => {
+    const outputPath = path.join(os.tmpdir(), `rs_out_${Date.now()}.mp4`)
+    const hasAudio = !!audioPath
+    const { filterComplex, outputLabel, audioLabel } = buildFilterComplex(scenes, hasAudio)
+
+    const cmd = ffmpeg()
+
+    // Add video inputs
+    scenes.forEach(scene => {
+      if (scene.type === 'image') {
+        cmd.addInput(scene.localPath)
+          .inputOptions(['-loop 1', `-t ${scene.duration}`])
+      } else {
+        // video clip — use actual file, FFmpeg reads duration from metadata
+        cmd.addInput(scene.localPath)
+      }
+    })
+
+    // Add audio input
+    if (hasAudio) {
+      cmd.addInput(audioPath)
+    }
+
+    cmd
+      .complexFilter(filterComplex)
+      .outputOptions([
+        `-map ${outputLabel}`,
+        audioLabel ? `-map ${audioLabel}` : '',
+        '-c:v libx264',
+        '-preset fast',
+        '-crf 23',
+        '-pix_fmt yuv420p',
+        '-movflags +faststart',
+        audioLabel ? '-c:a aac -b:a 128k' : '-an'
+      ].filter(Boolean))
+      .output(outputPath)
+      .on('end', () => resolve(outputPath))
+      .on('error', (err, stdout, stderr) => {
+        reject(new Error(`FFmpeg error: ${err.message}\n${stderr}`))
+      })
+      .run()
+  })
+}
+
+module.exports = { encodeVideo }
