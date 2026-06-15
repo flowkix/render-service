@@ -33,12 +33,13 @@ async function uploadVideo(localPath, bucket, storagePath) {
   return publicUrl
 }
 
-// Mark render as succeeded — write video_url, set status to approved
+// Mark render as succeeded — write video_url, restore status to scheduled
+// (content_calendar.status does not have 'approved'; valid: draft/scheduled/rendering/failed/published)
 async function markSuccess(reelId, videoUrl) {
   const supabase = getClient()
   const { error } = await supabase
     .from('content_calendar')
-    .update({ video_url: videoUrl, status: 'approved' })
+    .update({ video_url: videoUrl, status: 'scheduled' })
     .eq('id', reelId)
 
   if (error) throw new Error(`Supabase markSuccess failed: ${error.message}`)
