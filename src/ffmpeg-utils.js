@@ -1,6 +1,7 @@
 const ffmpeg = require('fluent-ffmpeg')
 const path = require('path')
 const os = require('os')
+const { randomUUID } = require('crypto')
 
 // Font bundled in Docker at /fonts/BarlowCondensed-Bold.ttf
 // Fallback to DejaVu on local dev (apt: fonts-dejavu-core)
@@ -84,7 +85,7 @@ function buildFilterComplex(scenes, hasAudio) {
 // Run the full FFmpeg encode. Returns path to output MP4.
 function encodeVideo(scenes, audioPath) {
   return new Promise((resolve, reject) => {
-    const outputPath = path.join(os.tmpdir(), `rs_out_${Date.now()}.mp4`)
+    const outputPath = path.join(os.tmpdir(), `rs_out_${randomUUID()}.mp4`)
     const hasAudio = !!audioPath
     const { filterComplex, outputLabel, audioLabel } = buildFilterComplex(scenes, hasAudio)
 
