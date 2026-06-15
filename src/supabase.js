@@ -12,13 +12,16 @@ function getClient() {
 // Returns the public URL
 async function uploadVideo(localPath, bucket, storagePath) {
   const supabase = getClient()
-  const fileBuffer = fs.readFileSync(localPath)
+  const fileStream = fs.createReadStream(localPath)
+  const { size } = fs.statSync(localPath)
 
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(storagePath, fileBuffer, {
+    .upload(storagePath, fileStream, {
       contentType: 'video/mp4',
-      upsert: true
+      duplex: 'half',
+      upsert: true,
+      headers: { 'content-length': String(size) }
     })
 
   if (error) throw new Error(`Supabase upload failed: ${error.message}`)
@@ -41,13 +44,14 @@ async function markSuccess(reelId, videoUrl) {
   if (error) throw new Error(`Supabase markSuccess failed: ${error.message}`)
 }
 
-// Mark render as failed — set status=failed + error_message
+// Mark render as failed — set status=failed + error_message (best-effort, does not throw)
 async function markFailed(reelId, errorMessage) {
   const supabase = getClient()
-  await supabase
+  const { error } = await supabase
     .from('content_calendar')
     .update({ status: 'failed', error_message: errorMessage.slice(0, 500) })
     .eq('id', reelId)
+  if (error) console.error(`[supabase] markFailed warning for ${reelId}: ${error.message}`)
 }
 
 module.exports = { uploadVideo, markSuccess, markFailed }
