@@ -116,18 +116,21 @@ function encodeVideo(scenes, audioPath) {
       cmd.addInput(audioPath)
     }
 
+    // Pass filter_complex as two separate args to avoid fluent-ffmpeg's internal
+    // string parser, which misinterprets output labels like [scaled3] and folds
+    // the rest of the filtergraph into the preceding filter's option list.
     cmd
-      .complexFilter(filterComplex)
       .outputOptions([
+        '-filter_complex', filterComplex,
         `-map ${outputLabel}`,
-        audioLabel ? `-map ${audioLabel}` : '',
+        ...(audioLabel ? [`-map ${audioLabel}`] : []),
         '-c:v libx264',
         '-preset fast',
         '-crf 23',
         '-pix_fmt yuv420p',
         '-movflags +faststart',
-        audioLabel ? '-c:a aac -b:a 128k' : '-an'
-      ].filter(Boolean))
+        ...(audioLabel ? ['-c:a aac -b:a 128k'] : ['-an'])
+      ])
       .output(outputPath)
       .on('end', () => resolve(outputPath))
       .on('error', (err, stdout, stderr) => {
