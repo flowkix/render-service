@@ -7,12 +7,18 @@ const { randomUUID } = require('crypto')
 // Fallback to DejaVu on local dev (apt: fonts-dejavu-core)
 const FONT_PATH = process.env.FONT_PATH || '/fonts/BarlowCondensed-Bold.ttf'
 
-// Escape text for FFmpeg drawtext: colons, backslashes, single quotes
+// Escape text for FFmpeg drawtext filter value (no surrounding quotes)
+// Colons, backslashes, single quotes, and special Unicode chars must be escaped
 function escapeDrawtext(text) {
   return String(text || '')
-    .replace(/\\/g, '\\\\')
-    .replace(/:/g, '\\:')
-    .replace(/'/g, "\\'")
+    .replace(/\\/g, '\\\\')   // backslash first
+    .replace(/'/g, "’")  // replace typographic single-quote / apostrophe variant
+    .replace(/[''`]/g, '')    // strip remaining ASCII single quotes (unsafe in filtergraph)
+    .replace(/:/g, '\\:')     // colon separator
+    .replace(/[^\x20-\x7E]/g, (ch) => {  // non-ASCII: replace em-dash etc. with ASCII equiv
+      const map = { '—': '-', '–': '-', '‘': "'", '’': "'", 'é': 'e', 'á': 'a', 'ó': 'o', 'ú': 'u', 'í': 'i' }
+      return map[ch] || ''
+    })
     .replace(/\n/g, ' ')
     .slice(0, 200) // safety cap
 }
@@ -34,7 +40,10 @@ function buildFilterComplex(scenes, hasAudio) {
 
     if (scene.text && scene.text.trim()) {
       const escaped = escapeDrawtext(scene.text.trim())
-      scaleFilter += `,drawtext=fontfile=${FONT_PATH}:text='${escaped}':` +
+      // Font path: on Windows, drive letter colon must be escaped as \\: in filtergraph
+      // Forward slashes only, then escape the drive-letter colon only (C: → C\\:)
+      const fontEscaped = FONT_PATH.replace(/\\/g, '/').replace(/^([A-Za-z]):\//,  '$1\\\\:/')
+      scaleFilter += `,drawtext=fontfile=${fontEscaped}:text=${escaped}:` +
         `fontsize=${FONT_SIZE}:fontcolor=white:${TEXT_SHADOW}:` +
         `x=(w-text_w)/2:y=${TEXT_Y}`
     }
