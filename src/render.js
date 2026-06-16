@@ -1,5 +1,5 @@
 const fs = require('fs')
-const { downloadFile } = require('./downloader')
+const { downloadFile, extFromUrl } = require('./downloader')
 const { generateSlide, generateCtaSlide } = require('./slide-gen')
 const { encodeVideo } = require('./ffmpeg-utils')
 const { uploadVideo, markSuccess, markFailed } = require('./supabase')
@@ -36,7 +36,7 @@ async function renderReel({ reel_id, scenes, supabase_bucket = 'assets', output_
       if (scene.type === 'cta') {
         slidePath = await generateCtaSlide(scene.text || '')
       } else {
-        const srcPath = await downloadFile(scene.src)
+        const srcPath = await downloadFile(scene.src, extFromUrl(scene.src))
         tempFiles.push(srcPath)
         slidePath = await generateSlide(srcPath, scene.text || '')
       }
