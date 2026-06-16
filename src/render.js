@@ -1,62 +1,98 @@
 const fs = require('fs')
-const { downloadFile, extFromUrl, isVideoExt } = require('./downloader')
+const { downloadFile } = require('./downloader')
+const { generateSlide, generateCtaSlide } = require('./slide-gen')
 const { encodeVideo } = require('./ffmpeg-utils')
 const { uploadVideo, markSuccess, markFailed } = require('./supabase')
 
-async function renderReel({ reel_id, scenes, audio_url, supabase_bucket = 'assets', output_path }) {
-  const downloadedFiles = []
+const TIMEOUT_MS = 5 * 60 * 1000  // 5 minutes
+
+async function renderReel({ reel_id, scenes, supabase_bucket = 'assets', output_path }) {
+  const tempFiles = []
+  let timedOut = false
+
+  const timeoutHandle = setTimeout(async () => {
+    timedOut = true
+    console.error(`[render] TIMEOUT reel=${reel_id}`)
+    try {
+      await markFailed(reel_id, 'Render timed out after 5 minutes')
+    } catch {}
+    tempFiles.forEach(f => { try { fs.unlinkSync(f) } catch {} })
+  }, TIMEOUT_MS)
+
+  const t0 = Date.now()
 
   try {
     console.log(`[render] start reel=${reel_id} scenes=${scenes.length}`)
 
-    // 1. Download all media
-    const processedScenes = await Promise.all(scenes.map(async (scene, i) => {
-      const ext = extFromUrl(scene.src)
-      const localPath = await downloadFile(scene.src, ext)
-      downloadedFiles.push(localPath)
+    const slides = []
 
-      const type = isVideoExt(ext) ? 'video' : 'image'
-      const duration = type === 'video'
-        ? (scene.duration || 6)   // WF10 can pass duration; fallback 6s
-        : (scene.duration || 4)   // images default 4s
+    for (let i = 0; i < scenes.length; i++) {
+      if (timedOut) return
+      const scene = scenes[i]
+      const ts = Date.now()
+      console.log(`[render] slide ${i}/${scenes.length} generating...`)
 
-      return {
-        localPath,
-        type,
-        duration,
-        text: scene.text || ''
+      let slidePath
+      if (scene.type === 'cta') {
+        slidePath = await generateCtaSlide(scene.text || '')
+      } else {
+        const srcPath = await downloadFile(scene.src)
+        tempFiles.push(srcPath)
+        slidePath = await generateSlide(srcPath, scene.text || '')
       }
-    }))
 
-    // 2. Download audio if provided
-    let audioPath = null
-    if (audio_url) {
-      const audioExt = extFromUrl(audio_url)
-      audioPath = await downloadFile(audio_url, audioExt)
-      downloadedFiles.push(audioPath)
+      tempFiles.push(slidePath)
+      slides.push({
+        localPath: slidePath,
+        duration: scene.duration || (scene.type === 'cta' ? 3 : 4)
+      })
+      console.log(`[render] slide ${i}/${scenes.length} done (${elapsed(ts)}s)`)
     }
 
-    // 3. Encode with FFmpeg
+    if (timedOut) return
+    const t1 = Date.now()
+    console.log(`[render] all slides done (${elapsed(t0)}s)`)
+
+    console.log(`[render] encoding...`)
+    const outputMp4 = await encodeVideo(slides)
+    tempFiles.push(outputMp4)
+    console.log(`[render] encode done (${elapsed(t1)}s)`)
+
+    if (timedOut) return
+
     const storagePath = output_path || `reels/${reel_id}.mp4`
-    console.log(`[render] encoding reel=${reel_id}`)
-    const outputMp4 = await encodeVideo(processedScenes, audioPath)
-    downloadedFiles.push(outputMp4)
-
-    // 4. Upload to Supabase
-    console.log(`[render] uploading reel=${reel_id} to ${supabase_bucket}/${storagePath}`)
+    console.log(`[render] uploading ${storagePath}`)
+    const t2 = Date.now()
     const videoUrl = await uploadVideo(outputMp4, supabase_bucket, storagePath)
+    console.log(`[render] upload done (${elapsed(t2)}s)`)
 
-    // 5. Mark success in content_calendar
     await markSuccess(reel_id, videoUrl)
-    console.log(`[render] done reel=${reel_id} url=${videoUrl}`)
+    clearTimeout(timeoutHandle)
+    console.log(`[render] markSuccess OK — TOTAL ${elapsed(t0)}s ✓`)
 
   } catch (err) {
+    clearTimeout(timeoutHandle)
+    if (timedOut) return
     console.error(`[render] FAILED reel=${reel_id}`, err.message)
-    await markFailed(reel_id, err.message).catch(() => {})
+
+    try {
+      await markFailed(reel_id, err.message)
+    } catch (e1) {
+      console.error(`[render] markFailed attempt 1 failed: ${e1.message}`)
+      await new Promise(r => setTimeout(r, 2000))
+      try {
+        await markFailed(reel_id, 'Render failed (retry)')
+      } catch (e2) {
+        console.error(`[FATAL] DB unreachable for reel=${reel_id}: ${e2.message}`)
+      }
+    }
   } finally {
-    // Cleanup all temp files
-    downloadedFiles.forEach(f => { try { fs.unlinkSync(f) } catch {} })
+    tempFiles.forEach(f => { try { fs.unlinkSync(f) } catch {} })
   }
+}
+
+function elapsed(since) {
+  return ((Date.now() - since) / 1000).toFixed(1)
 }
 
 module.exports = { renderReel }

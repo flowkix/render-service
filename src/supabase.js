@@ -55,4 +55,4 @@ async function markFailed(reelId, errorMessage) {
   if (error) console.error(`[supabase] markFailed warning for ${reelId}: ${error.message}`)
 }
 
-module.exports = { uploadVideo, markSuccess, markFailed }
+module.exports = { getClient, uploadVideo, markSuccess, markFailed }
