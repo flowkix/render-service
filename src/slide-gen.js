@@ -8,7 +8,7 @@ const LOGO_PATH = process.env.LOGO_PATH || '/logo/snacket-logo.png'
 const FONT_PATH = process.env.FONT_PATH || '/fonts/BarlowCondensed-Bold.ttf'
 const W = 1080
 const H = 1920
-const FONT_SIZE = 72
+const FONT_SIZE = 58
 
 // Load font as base64 once at startup — embedded in every SVG so fontconfig is not needed
 let FONT_B64 = ''
@@ -122,7 +122,7 @@ async function loadLogo(width) {
 // Returns path to temp JPEG.
 async function generateSlide(srcImagePath, text) {
   const outputPath = path.join(os.tmpdir(), `slide_${randomUUID()}.jpg`)
-  const lines = wrapText(text)
+  const lines = wrapText(text, 24, 2)
 
   const [bgBuf, fgBuf] = await Promise.all([
     // Layer 1: blurred COVER background
@@ -166,7 +166,7 @@ async function generateSlide(srcImagePath, text) {
 // Returns path to temp JPEG.
 async function generateCtaSlide(ctaText) {
   const outputPath = path.join(os.tmpdir(), `slide_cta_${randomUUID()}.jpg`)
-  const lines = wrapText(ctaText, 35, 2)
+  const lines = wrapText(ctaText, 24, 2)
 
   // Text starts below center (where the logo will sit above center)
   const textStartY = H / 2 + CTA_LOGO_WIDTH / 2 + 60
