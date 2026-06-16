@@ -43,7 +43,8 @@ async function markSuccess(reelId, videoUrl) {
   const supabase = getClient()
   const { error } = await supabase
     .from('content_calendar')
-    .update({ video_url: videoUrl, status: 'scheduled' })
+    // Clear published_at so WF9 re-publishes the re-rendered video
+    .update({ video_url: videoUrl, status: 'scheduled', published_at: null })
     .eq('id', reelId)
 
   if (error) throw new Error(`Supabase markSuccess failed: ${error.message}`)
