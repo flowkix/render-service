@@ -1,4 +1,4 @@
-const ffmpeg = require('fluent-ffmpeg')
+const { spawn } = require('child_process')
 const path = require('path')
 const os = require('os')
 const { randomUUID } = require('crypto')
@@ -91,52 +91,60 @@ function buildFilterComplex(scenes, hasAudio) {
   }
 }
 
-// Run the full FFmpeg encode. Returns path to output MP4.
+// Run the full FFmpeg encode via spawn() — bypasses fluent-ffmpeg's filter
+// string parser which misinterprets output labels like [scaled3].
 function encodeVideo(scenes, audioPath) {
   return new Promise((resolve, reject) => {
     const outputPath = path.join(os.tmpdir(), `rs_out_${randomUUID()}.mp4`)
     const hasAudio = !!audioPath
     const { filterComplex, outputLabel, audioLabel } = buildFilterComplex(scenes, hasAudio)
 
-    const cmd = ffmpeg()
+    const args = []
 
-    // Add video inputs
-    scenes.forEach(scene => {
+    // Inputs — image loops need per-input flags before -i
+    scenes.forEach((scene) => {
       if (scene.type === 'image') {
-        cmd.addInput(scene.localPath)
-          .inputOptions(['-loop 1', `-t ${scene.duration}`])
-      } else {
-        // video clip — use actual file, FFmpeg reads duration from metadata
-        cmd.addInput(scene.localPath)
+        args.push('-loop', '1', '-t', String(scene.duration))
       }
+      args.push('-i', scene.localPath)
     })
 
-    // Add audio input
-    if (hasAudio) {
-      cmd.addInput(audioPath)
+    if (hasAudio) args.push('-i', audioPath)
+
+    // filter_complex as two separate spawn args — no shell/parser in between
+    args.push('-filter_complex', filterComplex)
+
+    args.push('-map', outputLabel)
+    if (audioLabel) args.push('-map', audioLabel)
+
+    args.push(
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '23',
+      '-pix_fmt', 'yuv420p',
+      '-movflags', '+faststart'
+    )
+    if (audioLabel) {
+      args.push('-c:a', 'aac', '-b:a', '128k')
+    } else {
+      args.push('-an')
     }
 
-    // Pass filter_complex as two separate args to avoid fluent-ffmpeg's internal
-    // string parser, which misinterprets output labels like [scaled3] and folds
-    // the rest of the filtergraph into the preceding filter's option list.
-    cmd
-      .outputOptions([
-        '-filter_complex', filterComplex,
-        `-map ${outputLabel}`,
-        ...(audioLabel ? [`-map ${audioLabel}`] : []),
-        '-c:v libx264',
-        '-preset fast',
-        '-crf 23',
-        '-pix_fmt yuv420p',
-        '-movflags +faststart',
-        ...(audioLabel ? ['-c:a aac -b:a 128k'] : ['-an'])
-      ])
-      .output(outputPath)
-      .on('end', () => resolve(outputPath))
-      .on('error', (err, stdout, stderr) => {
-        reject(new Error(`FFmpeg error: ${err.message}\n${stderr}`))
-      })
-      .run()
+    args.push(outputPath)
+
+    console.log(`[ffmpeg] spawn scenes=${scenes.length} fc_len=${filterComplex.length}`)
+
+    const proc = spawn('ffmpeg', args)
+    let stderr = ''
+    proc.stderr.on('data', d => { stderr += d.toString() })
+    proc.on('close', code => {
+      if (code === 0) {
+        resolve(outputPath)
+      } else {
+        reject(new Error(`FFmpeg error: ffmpeg exited with code ${code}:\n${stderr.slice(-3000)}`))
+      }
+    })
+    proc.on('error', err => reject(new Error(`FFmpeg spawn error: ${err.message}`)))
   })
 }
 
