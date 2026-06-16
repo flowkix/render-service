@@ -163,13 +163,20 @@ async function generateSlide(srcImagePath, text) {
 }
 
 // Generate a CTA slide (solid charcoal background + centered logo + gold text).
+// Uses sharp.create() for the base — avoids SVG-as-primary-input (requires librsvg).
+// Same pattern as generateSlide(): solid JPEG base + SVG composite overlay.
 // Returns path to temp JPEG.
 async function generateCtaSlide(ctaText) {
   const outputPath = path.join(os.tmpdir(), `slide_cta_${randomUUID()}.jpg`)
   const lines = wrapText(ctaText, 24, 2)
 
-  // Text starts below center (where the logo will sit above center)
-  const textStartY = H / 2 + CTA_LOGO_WIDTH / 2 + 60
+  // Charcoal base via sharp.create — no SVG rasterization needed
+  const bgBuf = await sharp({
+    create: { width: W, height: H, channels: 3, background: { r: 26, g: 26, b: 26 } }
+  }).jpeg({ quality: 90 }).toBuffer()
+
+  // Gold text SVG overlay (same pattern as buildOverlaySvg but gold + centered)
+  const textStartY = Math.round(H / 2 + CTA_LOGO_WIDTH / 2 + 60)
   const textEls = lines.map((line, i) =>
     `<text x="${W / 2}" y="${textStartY + i * LINE_HEIGHT}"
       text-anchor="middle"
@@ -177,18 +184,19 @@ async function generateCtaSlide(ctaText) {
       font-size="${FONT_SIZE}" font-weight="bold" fill="${GOLD}">${escapeXml(line)}</text>`
   ).join('\n')
 
-  const svgBase = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
     <defs>${fontStyle()}</defs>
-    <rect width="${W}" height="${H}" fill="${CHARCOAL}"/>
     ${textEls}
   </svg>`
 
-  const composites = []
+  const composites = [{ input: Buffer.from(textSvg), blend: 'over' }]
+
   const logoBuf = await loadLogo(CTA_LOGO_WIDTH)
   if (logoBuf) {
     const meta = await sharp(logoBuf).metadata()
     const logoH = meta.height || CTA_LOGO_WIDTH
-    composites.push({
+    // Logo above center, text below — insert logo before text in composites
+    composites.unshift({
       input: logoBuf,
       top: Math.max(0, Math.floor(H / 2 - logoH / 2) - 40),
       left: Math.floor(W / 2 - CTA_LOGO_WIDTH / 2),
@@ -196,8 +204,8 @@ async function generateCtaSlide(ctaText) {
     })
   }
 
-  const base = sharp(Buffer.from(svgBase))
-  await (composites.length ? base.composite(composites) : base)
+  await sharp(bgBuf)
+    .composite(composites)
     .jpeg({ quality: 90 })
     .toFile(outputPath)
 
