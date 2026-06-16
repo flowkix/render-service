@@ -1,11 +1,14 @@
 const { createClient } = require('@supabase/supabase-js')
 const fs = require('fs')
+const WebSocket = require('ws')
 
 function getClient() {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_KEY
   if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY required')
-  return createClient(url, key)
+  return createClient(url, key, {
+    realtime: { transport: WebSocket }
+  })
 }
 
 // Upload a local MP4 file to Supabase Storage
