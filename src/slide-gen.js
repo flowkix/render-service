@@ -125,14 +125,16 @@ async function generateSlide(srcImagePath, text) {
   const lines = wrapText(text, 24, 2)
 
   const [bgBuf, fgBuf] = await Promise.all([
-    // Layer 1: blurred COVER background
+    // Layer 1: blurred COVER background — .rotate() auto-orients by EXIF
     sharp(srcImagePath)
+      .rotate()
       .resize(W, H, { fit: 'cover' })
       .blur(20)
       .modulate({ brightness: 0.7 })
       .toBuffer(),
-    // Layer 2: CONTAIN foreground (transparent letterbox)
+    // Layer 2: CONTAIN foreground (transparent letterbox) — .rotate() auto-orients by EXIF
     sharp(srcImagePath)
+      .rotate()
       .resize(W, H, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .png()
       .toBuffer(),
