@@ -17,11 +17,14 @@ async function checkSupabase() {
     } else {
       supabaseStatus = 'connected'
       console.log('[server] Supabase OK')
+      return // stop retrying
     }
   } catch (err) {
     supabaseStatus = `FAILED: ${err.message}`
     console.error('[server] Supabase check threw:', err.message)
   }
+  // Retry every 10s until connected
+  setTimeout(checkSupabase, 10000)
 }
 
 app.get('/health', (_, res) => res.json({
