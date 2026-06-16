@@ -5,9 +5,32 @@ const { randomUUID } = require('crypto')
 const os = require('os')
 
 const LOGO_PATH = process.env.LOGO_PATH || '/logo/snacket-logo.png'
+const FONT_PATH = process.env.FONT_PATH || '/fonts/BarlowCondensed-Bold.ttf'
 const W = 1080
 const H = 1920
 const FONT_SIZE = 72
+
+// Load font as base64 once at startup — embedded in every SVG so fontconfig is not needed
+let FONT_B64 = ''
+try {
+  FONT_B64 = fs.readFileSync(FONT_PATH).toString('base64')
+  console.log('[slide-gen] font loaded:', FONT_PATH)
+} catch {
+  console.warn('[slide-gen] font not found at', FONT_PATH, '— text will use system fallback')
+}
+
+function fontStyle() {
+  if (!FONT_B64) return ''
+  return `<style>
+    @font-face {
+      font-family: 'BarlowSlide';
+      src: url('data:font/truetype;base64,${FONT_B64}');
+      font-weight: bold;
+    }
+  </style>`
+}
+
+const FONT_FAMILY = "'BarlowSlide', 'Arial Narrow', sans-serif"
 const TEXT_Y_BOTTOM = 1680  // px from top for last text line (bottom-third)
 const LINE_HEIGHT = Math.round(FONT_SIZE * 1.25)
 const LOGO_WIDTH = 160
@@ -60,13 +83,14 @@ function buildOverlaySvg(lines, color = 'white') {
   const textEls = lines.map((line, i) =>
     `<text x="${W / 2}" y="${startY + i * LINE_HEIGHT}"
       text-anchor="middle"
-      font-family="'BarlowCondensed-Bold', 'Barlow Condensed', 'Arial Narrow', sans-serif"
+      font-family="${FONT_FAMILY}"
       font-size="${FONT_SIZE}" font-weight="bold" fill="${color}"
       filter="url(#shadow)">${escapeXml(line)}</text>`
   ).join('\n')
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
   <defs>
+    ${fontStyle()}
     <linearGradient id="gTop" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#000" stop-opacity="0.45"/>
       <stop offset="40%" stop-color="#000" stop-opacity="0"/>
@@ -149,11 +173,12 @@ async function generateCtaSlide(ctaText) {
   const textEls = lines.map((line, i) =>
     `<text x="${W / 2}" y="${textStartY + i * LINE_HEIGHT}"
       text-anchor="middle"
-      font-family="'BarlowCondensed-Bold', 'Barlow Condensed', 'Arial Narrow', sans-serif"
+      font-family="${FONT_FAMILY}"
       font-size="${FONT_SIZE}" font-weight="bold" fill="${GOLD}">${escapeXml(line)}</text>`
   ).join('\n')
 
   const svgBase = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+    <defs>${fontStyle()}</defs>
     <rect width="${W}" height="${H}" fill="${CHARCOAL}"/>
     ${textEls}
   </svg>`
