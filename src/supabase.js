@@ -33,7 +33,8 @@ async function uploadVideo(localPath, bucket, storagePath) {
     .from(bucket)
     .getPublicUrl(storagePath)
 
-  return publicUrl
+  // Append version param so Cloudflare CDN serves the fresh upload, not a cached older render
+  return `${publicUrl}?v=${Date.now()}`
 }
 
 // Mark render as succeeded — write video_url, restore status to scheduled
