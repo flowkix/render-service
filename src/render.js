@@ -6,7 +6,7 @@ const { uploadVideo, markSuccess, markFailed } = require('./supabase')
 
 const TIMEOUT_MS = 5 * 60 * 1000  // 5 minutes
 
-async function renderReel({ reel_id, scenes, supabase_bucket = 'assets', output_path }) {
+async function renderReel({ reel_id, scenes, audio_url, supabase_bucket = 'assets', output_path }) {
   const tempFiles = []
   let timedOut = false
 
@@ -53,8 +53,17 @@ async function renderReel({ reel_id, scenes, supabase_bucket = 'assets', output_
     const t1 = Date.now()
     console.log(`[render] all slides done (${elapsed(t0)}s)`)
 
-    console.log(`[render] encoding...`)
-    const outputMp4 = await encodeVideo(slides)
+    // Download audio if provided (Library or Jamendo URL)
+    let audioPath = null
+    if (audio_url) {
+      console.log(`[render] downloading audio: ${audio_url}`)
+      audioPath = await downloadFile(audio_url, '.mp3')
+      tempFiles.push(audioPath)
+      console.log(`[render] audio downloaded → ${audioPath}`)
+    }
+
+    console.log(`[render] encoding${audioPath ? ' +audio' : ''}...`)
+    const outputMp4 = await encodeVideo(slides, audioPath)
     tempFiles.push(outputMp4)
     console.log(`[render] encode done (${elapsed(t1)}s)`)
 

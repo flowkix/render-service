@@ -8,7 +8,7 @@ const FADE_DUR = 0.5
 // Assemble pre-rendered slide images into an MP4 with xfade transitions.
 // slides: [{ localPath: string, duration: number }]
 // All text/logo composition is done by slide-gen.js before this function is called.
-function encodeVideo(slides) {
+function encodeVideo(slides, audioPath = null) {
   return new Promise((resolve, reject) => {
     const outputPath = path.join(os.tmpdir(), `rs_out_${randomUUID()}.mp4`)
     const args = []
@@ -51,16 +51,24 @@ function encodeVideo(slides) {
       outputLabel = '[vout]'
     }
 
+    // Audio input after all slide inputs
+    if (audioPath) {
+      args.push('-i', audioPath)
+    }
+
     args.push('-filter_complex', filterComplex)
     args.push('-map', outputLabel)
-    args.push(
-      '-c:v', 'libx264',
-      '-preset', 'fast',
-      '-crf', '23',
-      '-pix_fmt', 'yuv420p',
-      '-movflags', '+faststart',
-      '-an'  // audio in Phase 2 only
-    )
+
+    if (audioPath) {
+      // Audio input index = number of slide inputs
+      args.push('-map', `${slides.length}:a`)
+      args.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
+      args.push('-c:a', 'aac', '-b:a', '192k', '-shortest')
+    } else {
+      args.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
+      args.push('-an')
+    }
+
     args.push(outputPath)
 
     console.log(`[ffmpeg] spawn slides=${slides.length} fc_len=${filterComplex.length}`)
