@@ -1,4 +1,5 @@
 const { spawn } = require('child_process')
+const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const { randomUUID } = require('crypto')
@@ -7,13 +8,32 @@ const FADE_DUR = 0.5
 
 const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
 
+// White bold text, black outline, top-center — mirrors slide-gen overlay style
+const DRAWTEXT_STYLE = 'fontsize=68:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.10:line_spacing=6'
+
+// Write text to a temp file so FFmpeg drawtext doesn't need shell quoting/escaping
+function writeTempText(text) {
+  const tf = path.join(os.tmpdir(), `rs_txt_${randomUUID()}.txt`)
+  fs.writeFileSync(tf, text, 'utf8')
+  return tf
+}
+
+// Build drawtext filter segment for a video clip that has overlay text.
+// Uses textfile= to bypass all quoting issues with special chars.
+function drawtextSegment(textFile) {
+  return `,drawtext=textfile='${textFile}':${DRAWTEXT_STYLE}`
+}
+
 // Assemble slides/clips into an MP4 with xfade transitions.
-// slides: [{ localPath: string, duration: number, isVideo: boolean }]
+// slides: [{ localPath: string, duration: number, isVideo: boolean, text?: string }]
 // isVideo=true  → raw video clip, passed directly to FFmpeg (no Sharp)
 // isVideo=false → pre-rendered image from slide-gen, looped with -loop 1
+// text (isVideo only) → optional overlay text burned in via FFmpeg drawtext
 function encodeVideo(slides, audioPath = null) {
   return new Promise((resolve, reject) => {
     const outputPath = path.join(os.tmpdir(), `rs_out_${randomUUID()}.mp4`)
+    const textTempFiles = []  // cleaned up after FFmpeg exits
+
     const args = []
 
     // Images: -loop 1 -t D; video clips: just -i (duration trimmed in filter_complex)
@@ -30,7 +50,13 @@ function encodeVideo(slides, audioPath = null) {
     if (slides.length === 1) {
       const s = slides[0]
       if (s.isVideo) {
-        filterComplex = `[0:v]${BASE_SCALE},trim=duration=${s.duration},setpts=PTS-STARTPTS[vout]`
+        let f = `[0:v]${BASE_SCALE},trim=duration=${s.duration},setpts=PTS-STARTPTS`
+        if (s.text) {
+          const tf = writeTempText(s.text)
+          textTempFiles.push(tf)
+          f += drawtextSegment(tf)
+        }
+        filterComplex = `${f}[vout]`
       } else {
         filterComplex = `[0:v]scale=1080:1920,setsar=1,fps=30[vout]`
       }
@@ -41,7 +67,13 @@ function encodeVideo(slides, audioPath = null) {
       // Normalize each input; video clips also get trim to enforce duration
       slides.forEach((slide, i) => {
         if (slide.isVideo) {
-          parts.push(`[${i}:v]${BASE_SCALE},trim=duration=${slide.duration},setpts=PTS-STARTPTS[s${i}]`)
+          let f = `[${i}:v]${BASE_SCALE},trim=duration=${slide.duration},setpts=PTS-STARTPTS`
+          if (slide.text) {
+            const tf = writeTempText(slide.text)
+            textTempFiles.push(tf)
+            f += drawtextSegment(tf)
+          }
+          parts.push(`${f}[s${i}]`)
         } else {
           parts.push(`[${i}:v]${BASE_SCALE}[s${i}]`)
         }
@@ -91,11 +123,16 @@ function encodeVideo(slides, audioPath = null) {
     const proc = spawn('ffmpeg', args)
     let stderr = ''
     proc.stderr.on('data', d => { stderr += d.toString() })
+    const cleanupTextFiles = () => textTempFiles.forEach(f => { try { fs.unlinkSync(f) } catch {} })
     proc.on('close', code => {
+      cleanupTextFiles()
       if (code === 0) resolve(outputPath)
       else reject(new Error(`FFmpeg exit ${code}:\n${stderr.slice(-1000)}`))
     })
-    proc.on('error', err => reject(new Error(`FFmpeg spawn error: ${err.message}`)))
+    proc.on('error', err => {
+      cleanupTextFiles()
+      reject(new Error(`FFmpeg spawn error: ${err.message}`))
+    })
   })
 }
 

@@ -41,7 +41,7 @@ async function renderReel({ reel_id, scenes, audio_url, supabase_bucket = 'asset
         const ext = extFromUrl(scene.src) || '.mov'
         const clipPath = await downloadFile(scene.src, ext)
         tempFiles.push(clipPath)
-        slides.push({ localPath: clipPath, duration: scene.duration || 6, isVideo: true })
+        slides.push({ localPath: clipPath, duration: scene.duration || 6, isVideo: true, text: scene.text || '' })
       } else {
         // Image: process through slide-gen (Sharp)
         const srcPath = await downloadFile(scene.src, extFromUrl(scene.src))
