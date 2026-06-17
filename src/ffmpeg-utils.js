@@ -9,12 +9,36 @@ const FADE_DUR = 0.5
 const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
 
 // White bold text, black outline, top-center — mirrors slide-gen overlay style
-const DRAWTEXT_STYLE = 'fontsize=68:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.10:line_spacing=6'
+const DRAWTEXT_STYLE = 'fontsize=52:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.10:line_spacing=8'
 
-// Write text to a temp file so FFmpeg drawtext doesn't need shell quoting/escaping
+// Word-wrap text at maxCharsPerLine (preserves existing \n), max 3 lines
+function wrapText(text, maxCharsPerLine = 28, maxLines = 3) {
+  const segments = text.split('\n')
+  const lines = []
+  for (const segment of segments) {
+    if (lines.length >= maxLines) break
+    const words = segment.split(/\s+/).filter(Boolean)
+    let current = ''
+    for (const word of words) {
+      if (lines.length >= maxLines) break
+      if (current.length === 0) {
+        current = word
+      } else if (current.length + 1 + word.length <= maxCharsPerLine) {
+        current += ' ' + word
+      } else {
+        lines.push(current)
+        current = word
+      }
+    }
+    if (current && lines.length < maxLines) lines.push(current)
+  }
+  return lines.slice(0, maxLines).join('\n')
+}
+
+// Write word-wrapped text to a temp file so FFmpeg drawtext doesn't need shell quoting/escaping
 function writeTempText(text) {
   const tf = path.join(os.tmpdir(), `rs_txt_${randomUUID()}.txt`)
-  fs.writeFileSync(tf, text, 'utf8')
+  fs.writeFileSync(tf, wrapText(text), 'utf8')
   return tf
 }
 
