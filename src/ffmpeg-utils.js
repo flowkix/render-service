@@ -5,31 +5,46 @@ const { randomUUID } = require('crypto')
 
 const FADE_DUR = 0.5
 
-// Assemble pre-rendered slide images into an MP4 with xfade transitions.
-// slides: [{ localPath: string, duration: number }]
-// All text/logo composition is done by slide-gen.js before this function is called.
+const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
+
+// Assemble slides/clips into an MP4 with xfade transitions.
+// slides: [{ localPath: string, duration: number, isVideo: boolean }]
+// isVideo=true  → raw video clip, passed directly to FFmpeg (no Sharp)
+// isVideo=false → pre-rendered image from slide-gen, looped with -loop 1
 function encodeVideo(slides, audioPath = null) {
   return new Promise((resolve, reject) => {
     const outputPath = path.join(os.tmpdir(), `rs_out_${randomUUID()}.mp4`)
     const args = []
 
-    // Each image is looped for its duration
+    // Images: -loop 1 -t D; video clips: just -i (duration trimmed in filter_complex)
     slides.forEach(slide => {
-      args.push('-loop', '1', '-t', String(slide.duration), '-i', slide.localPath)
+      if (slide.isVideo) {
+        args.push('-i', slide.localPath)
+      } else {
+        args.push('-loop', '1', '-t', String(slide.duration), '-i', slide.localPath)
+      }
     })
 
     let filterComplex, outputLabel
 
     if (slides.length === 1) {
-      filterComplex = `[0:v]scale=1080:1920,setsar=1,fps=30[vout]`
+      const s = slides[0]
+      if (s.isVideo) {
+        filterComplex = `[0:v]${BASE_SCALE},trim=duration=${s.duration},setpts=PTS-STARTPTS[vout]`
+      } else {
+        filterComplex = `[0:v]scale=1080:1920,setsar=1,fps=30[vout]`
+      }
       outputLabel = '[vout]'
     } else {
       const parts = []
 
-      // Normalize each input to exact portrait resolution
-      slides.forEach((_, i) => {
-        parts.push(`[${i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,` +
-          `pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30[s${i}]`)
+      // Normalize each input; video clips also get trim to enforce duration
+      slides.forEach((slide, i) => {
+        if (slide.isVideo) {
+          parts.push(`[${i}:v]${BASE_SCALE},trim=duration=${slide.duration},setpts=PTS-STARTPTS[s${i}]`)
+        } else {
+          parts.push(`[${i}:v]${BASE_SCALE}[s${i}]`)
+        }
       })
 
       // Chain xfade transitions

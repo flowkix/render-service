@@ -30,22 +30,27 @@ async function renderReel({ reel_id, scenes, audio_url, supabase_bucket = 'asset
       if (timedOut) return
       const scene = scenes[i]
       const ts = Date.now()
-      console.log(`[render] slide ${i}/${scenes.length} generating...`)
+      console.log(`[render] slide ${i}/${scenes.length} type=${scene.type || 'image'} generating...`)
 
-      let slidePath
       if (scene.type === 'cta') {
-        slidePath = await generateCtaSlide(scene.text || '')
+        const slidePath = await generateCtaSlide(scene.text || '')
+        tempFiles.push(slidePath)
+        slides.push({ localPath: slidePath, duration: scene.duration || 3, isVideo: false })
+      } else if (scene.type === 'video') {
+        // Raw video clip — pass directly to FFmpeg, skip Sharp
+        const ext = extFromUrl(scene.src) || '.mov'
+        const clipPath = await downloadFile(scene.src, ext)
+        tempFiles.push(clipPath)
+        slides.push({ localPath: clipPath, duration: scene.duration || 6, isVideo: true })
       } else {
+        // Image: process through slide-gen (Sharp)
         const srcPath = await downloadFile(scene.src, extFromUrl(scene.src))
         tempFiles.push(srcPath)
-        slidePath = await generateSlide(srcPath, scene.text || '')
+        const slidePath = await generateSlide(srcPath, scene.text || '')
+        tempFiles.push(slidePath)
+        slides.push({ localPath: slidePath, duration: scene.duration || 4, isVideo: false })
       }
 
-      tempFiles.push(slidePath)
-      slides.push({
-        localPath: slidePath,
-        duration: scene.duration || (scene.type === 'cta' ? 3 : 4)
-      })
       console.log(`[render] slide ${i}/${scenes.length} done (${elapsed(ts)}s)`)
     }
 
