@@ -82,7 +82,23 @@ function encodeVideo(slides, audioPath = null) {
         }
         filterComplex = `${f}[vout]`
       } else {
-        filterComplex = `[0:v]scale=1080:1920,setsar=1,fps=30[vout]`
+        // Ken Burns: slow zoom-in 1x→1.3x over the slide duration
+        const d = Math.max(1, Math.round(s.duration * 30))
+        const kb = [
+          `zoompan=z='min(zoom+0.0015,1.3)'`,
+          `x='iw/2-(iw/zoom/2)'`,
+          `y='ih/2-(ih/zoom/2)'`,
+          `d=${d}`,
+          `s=1080x1920`,
+          `fps=30`
+        ].join(':')
+        let f = `[0:v]${kb},setsar=1`
+        if (s.text) {
+          const tf = writeTempText(s.text)
+          textTempFiles.push(tf)
+          f += drawtextSegment(tf)
+        }
+        filterComplex = `${f}[vout]`
       }
       outputLabel = '[vout]'
     } else {
@@ -99,7 +115,23 @@ function encodeVideo(slides, audioPath = null) {
           }
           parts.push(`${f}[s${i}]`)
         } else {
-          parts.push(`[${i}:v]${BASE_SCALE}[s${i}]`)
+          // Ken Burns: slow zoom-in 1x→1.3x over the slide duration
+          const d = Math.max(1, Math.round(slide.duration * 30))
+          const kb = [
+            `zoompan=z='min(zoom+0.0015,1.3)'`,
+            `x='iw/2-(iw/zoom/2)'`,
+            `y='ih/2-(ih/zoom/2)'`,
+            `d=${d}`,
+            `s=1080x1920`,
+            `fps=30`
+          ].join(':')
+          let f = `[${i}:v]${kb},setsar=1`
+          if (slide.text) {
+            const tf = writeTempText(slide.text)
+            textTempFiles.push(tf)
+            f += drawtextSegment(tf)
+          }
+          parts.push(`${f}[s${i}]`)
         }
       })
 
