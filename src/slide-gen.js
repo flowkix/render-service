@@ -31,7 +31,7 @@ function fontStyle() {
 }
 
 const FONT_FAMILY = "'BarlowSlide', 'Arial Narrow', sans-serif"
-const TEXT_Y_BOTTOM = 1680  // px from top for last text line (bottom-third)
+const TEXT_Y_BOTTOM = 1680  // bottom anchor: last line at y=1680 (87.5% of 1920) — matches ffmpeg y=h*0.85
 const LINE_HEIGHT = Math.round(FONT_SIZE * 1.25)
 const LOGO_WIDTH = 160
 const LOGO_MARGIN = 24
@@ -41,7 +41,7 @@ const GOLD = '#C9A227'
 
 // Word-wrap: split at \n first, then wrap long lines at maxChars.
 // Returns max maxLines lines total.
-function wrapText(text, maxChars = 35, maxLines = 3) {
+function wrapText(text, maxChars = 36, maxLines = 2) {
   if (!text) return []
   const lines = []
   for (const seg of text.split('\n')) {
@@ -122,7 +122,7 @@ async function loadLogo(width) {
 // Returns path to temp JPEG.
 async function generateSlide(srcImagePath, text) {
   const outputPath = path.join(os.tmpdir(), `slide_${randomUUID()}.jpg`)
-  const lines = wrapText(text, 28, 3)
+  const lines = wrapText(text, 36, 2)
 
   const [bgBuf, fgBuf] = await Promise.all([
     // Layer 1: blurred COVER background — .rotate() auto-orients by EXIF
