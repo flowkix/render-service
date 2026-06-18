@@ -8,11 +8,11 @@ const FADE_DUR = 0.5
 
 const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
 
-// White bold text, black outline, top-center — mirrors slide-gen overlay style
-const DRAWTEXT_STYLE = 'fontsize=52:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.10:line_spacing=8'
+// White bold text, black outline, bottom-center — mirrors slide-gen overlay style
+const DRAWTEXT_STYLE = 'fontsize=46:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.85-text_h:line_spacing=10'
 
-// Word-wrap text at maxCharsPerLine (preserves existing \n), max 3 lines
-function wrapText(text, maxCharsPerLine = 28, maxLines = 3) {
+// Word-wrap text at maxCharsPerLine (preserves existing \n), max 2 lines — 36×2=72 chars available
+function wrapText(text, maxCharsPerLine = 36, maxLines = 2) {
   const segments = text.split('\n')
   const lines = []
   for (const segment of segments) {
