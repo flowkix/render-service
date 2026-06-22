@@ -58,13 +58,11 @@ function encodeVideo(slides, audioPath = null) {
     const outputPath = path.join(os.tmpdir(), `rs_out_${randomUUID()}.mp4`)
     const textTempFiles = []  // cleaned up after FFmpeg exits
 
-    // Hard cap on audio: sum of all slide durations (no xfade deduction).
-    // The xfade chain after the first transition has offset >= prev stream duration,
-    // so effective overlaps are ~0; actual [vout] ≈ sum - FADE_DUR.
-    // Using plain sum as cap gives a ~0.5s audio tail after video ends — negligible.
-    // -shortest is dropped: it was reading filter_complex intermediate stream EOF
-    // as the "shortest" stream and capping the reel at the audio duration (6+ min).
-    const totalDuration = slides.reduce((sum, s) => sum + s.duration, 0)
+    // Hard cap: each xfade now uses corrected offsets so every transition produces
+    // a real FADE_DUR overlap. Actual [vout] = sum(durations) - (N-1)*FADE_DUR.
+    const totalDuration = slides.length <= 1
+      ? (slides[0]?.duration ?? 4)
+      : slides.reduce((sum, s) => sum + s.duration, 0) - (slides.length - 1) * FADE_DUR
 
     const args = []
 
@@ -82,7 +80,8 @@ function encodeVideo(slides, audioPath = null) {
     if (slides.length === 1) {
       const s = slides[0]
       if (s.isVideo) {
-        let f = `[0:v]${BASE_SCALE},trim=duration=${s.duration},setpts=PTS-STARTPTS`
+        const d = s.duration
+        let f = `[0:v]${BASE_SCALE},setpts=PTS-STARTPTS,trim=duration=${d},setpts=PTS-STARTPTS,loop=loop=-1:size=32767,trim=duration=${d},setpts=PTS-STARTPTS`
         if (s.text) {
           const tf = writeTempText(s.text)
           textTempFiles.push(tf)
@@ -112,10 +111,15 @@ function encodeVideo(slides, audioPath = null) {
     } else {
       const parts = []
 
-      // Normalize each input; video clips also get trim to enforce duration
+      // Normalize each input; video clips use trim+loop+trim to enforce exact duration
+      // regardless of whether the actual clip is shorter or longer than slide.duration.
       slides.forEach((slide, i) => {
         if (slide.isVideo) {
-          let f = `[${i}:v]${BASE_SCALE},trim=duration=${slide.duration},setpts=PTS-STARTPTS`
+          const d = slide.duration
+          // 1) scale+normalize  2) reset PTS  3) trim (handles clips longer than d)
+          // 4) loop indefinitely (pads clips shorter than d, buffers ≤ d*fps frames)
+          // 5) trim again to exactly d  6) reset PTS for clean xfade input
+          let f = `[${i}:v]${BASE_SCALE},setpts=PTS-STARTPTS,trim=duration=${d},setpts=PTS-STARTPTS,loop=loop=-1:size=32767,trim=duration=${d},setpts=PTS-STARTPTS`
           if (slide.text) {
             const tf = writeTempText(slide.text)
             textTempFiles.push(tf)
@@ -143,19 +147,22 @@ function encodeVideo(slides, audioPath = null) {
         }
       })
 
-      // Chain xfade transitions
+      // Chain xfade transitions.
+      // Track actualOffset = real accumulated [vout] duration after each xfade.
+      // xfade output = offset + B.duration. Using actualOffset (not naive timeOffset)
+      // guarantees offset < prev_stream_duration so xfade always includes B content.
       let prevLabel = 's0'
-      let timeOffset = slides[0].duration
+      let actualOffset = slides[0].duration
 
       slides.forEach((slide, i) => {
         if (i === 0) return
         const outLabel = i === slides.length - 1 ? 'vout' : `x${i}`
-        const offset = Math.max(0, timeOffset - FADE_DUR)
+        const offset = Math.max(0, actualOffset - FADE_DUR)
         parts.push(
           `[${prevLabel}][s${i}]xfade=transition=fade:duration=${FADE_DUR}:offset=${offset}[${outLabel}]`
         )
         prevLabel = outLabel
-        timeOffset += slide.duration
+        actualOffset = offset + slide.duration
       })
 
       filterComplex = parts.join(';')
