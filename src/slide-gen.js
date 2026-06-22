@@ -119,9 +119,9 @@ async function loadLogo(width) {
 }
 
 // Generate a styled slide from a source image file path.
-// Returns path to temp JPEG.
+// Returns path to temp PNG (lossless — avoids JPEG-on-JPEG artifact compounding).
 async function generateSlide(srcImagePath, text) {
-  const outputPath = path.join(os.tmpdir(), `slide_${randomUUID()}.jpg`)
+  const outputPath = path.join(os.tmpdir(), `slide_${randomUUID()}.png`)
   const lines = wrapText(text, 36, 2)
 
   const [bgBuf, fgBuf] = await Promise.all([
@@ -158,7 +158,7 @@ async function generateSlide(srcImagePath, text) {
 
   await sharp(bgBuf)
     .composite(composites)
-    .jpeg({ quality: 85 })
+    .png({ compressionLevel: 6 })
     .toFile(outputPath)
 
   return outputPath
@@ -166,16 +166,16 @@ async function generateSlide(srcImagePath, text) {
 
 // Generate a CTA slide (solid charcoal background + centered logo + gold text).
 // Uses sharp.create() for the base — avoids SVG-as-primary-input (requires librsvg).
-// Same pattern as generateSlide(): solid JPEG base + SVG composite overlay.
-// Returns path to temp JPEG.
+// Same pattern as generateSlide(): solid PNG base + SVG composite overlay.
+// Returns path to temp PNG (lossless).
 async function generateCtaSlide(ctaText) {
-  const outputPath = path.join(os.tmpdir(), `slide_cta_${randomUUID()}.jpg`)
+  const outputPath = path.join(os.tmpdir(), `slide_cta_${randomUUID()}.png`)
   const lines = wrapText(ctaText, 24, 2)
 
   // Charcoal base via sharp.create — no SVG rasterization needed
   const bgBuf = await sharp({
     create: { width: W, height: H, channels: 3, background: { r: 26, g: 26, b: 26 } }
-  }).jpeg({ quality: 90 }).toBuffer()
+  }).png().toBuffer()
 
   // Gold text SVG overlay (same pattern as buildOverlaySvg but gold + centered)
   const textStartY = Math.round(H / 2 + CTA_LOGO_WIDTH / 2 + 60)
@@ -208,7 +208,7 @@ async function generateCtaSlide(ctaText) {
 
   await sharp(bgBuf)
     .composite(composites)
-    .jpeg({ quality: 90 })
+    .png({ compressionLevel: 6 })
     .toFile(outputPath)
 
   return outputPath

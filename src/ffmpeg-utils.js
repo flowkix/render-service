@@ -6,7 +6,7 @@ const { randomUUID } = require('crypto')
 
 const FADE_DUR = 0.5
 
-const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
+const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
 
 // White bold text, black outline, bottom-center — mirrors slide-gen overlay style
 const DRAWTEXT_STYLE = 'fontsize=46:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.85-text_h:line_spacing=10'
@@ -89,17 +89,19 @@ function encodeVideo(slides, audioPath = null) {
         }
         filterComplex = `${f}[vout]`
       } else {
-        // Ken Burns: slow zoom-in 1x→1.3x over the slide duration
+        // Ken Burns: slow zoom-in 1x→1.3x over the slide duration.
+        // Pre-scale 1.3× (1080→1404, 1920→2496) so at max zoom (z=1.3) zoompan crops
+        // exactly 1080px of the 1404px source → net 1:1 pixels, zero upscale blur.
         const d = Math.max(1, Math.round(s.duration * 30))
         const kb = [
           `zoompan=z='min(zoom+0.0015,1.3)'`,
           `x='iw/2-(iw/zoom/2)'`,
           `y='ih/2-(ih/zoom/2)'`,
           `d=${d}`,
-          `s=1080x1920`,
+          `s=1404x2496`,
           `fps=30`
         ].join(':')
-        let f = `[0:v]${kb},setsar=1`
+        let f = `[0:v]scale=1404:2496:flags=lanczos,${kb},scale=1080:1920:flags=lanczos,setsar=1`
         if (s.text) {
           const tf = writeTempText(s.text)
           textTempFiles.push(tf)
@@ -127,17 +129,18 @@ function encodeVideo(slides, audioPath = null) {
           }
           parts.push(`${f}[s${i}]`)
         } else {
-          // Ken Burns: slow zoom-in 1x→1.3x over the slide duration
+          // Ken Burns: slow zoom-in 1x→1.3x over the slide duration.
+          // Pre-scale 1.3× so at max zoom zoompan reads at 1:1 source pixels (no upscale blur).
           const d = Math.max(1, Math.round(slide.duration * 30))
           const kb = [
             `zoompan=z='min(zoom+0.0015,1.3)'`,
             `x='iw/2-(iw/zoom/2)'`,
             `y='ih/2-(ih/zoom/2)'`,
             `d=${d}`,
-            `s=1080x1920`,
+            `s=1404x2496`,
             `fps=30`
           ].join(':')
-          let f = `[${i}:v]${kb},setsar=1`
+          let f = `[${i}:v]scale=1404:2496:flags=lanczos,${kb},scale=1080:1920:flags=lanczos,setsar=1`
           if (slide.text) {
             const tf = writeTempText(slide.text)
             textTempFiles.push(tf)
@@ -180,11 +183,11 @@ function encodeVideo(slides, audioPath = null) {
     if (audioPath) {
       // Audio input index = number of slide inputs
       args.push('-map', `${slides.length}:a`)
-      args.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
+      args.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
       args.push('-c:a', 'aac', '-b:a', '192k')
       args.push('-t', totalDuration.toFixed(3))
     } else {
-      args.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
+      args.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
       args.push('-an')
       args.push('-t', totalDuration.toFixed(3))
     }
