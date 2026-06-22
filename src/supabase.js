@@ -55,7 +55,7 @@ async function markFailed(reelId, errorMessage) {
   const supabase = getClient()
   const { error } = await supabase
     .from('content_calendar')
-    .update({ status: 'failed', error_message: errorMessage.slice(0, 500) })
+    .update({ status: 'failed', error_message: errorMessage.slice(0, 2000) })
     .eq('id', reelId)
   if (error) console.error(`[supabase] markFailed warning for ${reelId}: ${error.message}`)
 }

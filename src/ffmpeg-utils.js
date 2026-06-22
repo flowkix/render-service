@@ -6,7 +6,10 @@ const { randomUUID } = require('crypto')
 
 const FADE_DUR = 0.5
 
-const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
+// Lanczos removed from BASE_SCALE — some Railway FFmpeg builds silently reject the flags
+// option inside filter_complex; bilinear is universally supported and visually fine at
+// 1080×1920 target resolution.
+const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30'
 
 // White bold text, black outline, bottom-center — mirrors slide-gen overlay style
 const DRAWTEXT_STYLE = 'fontsize=46:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.85-text_h:line_spacing=10'
@@ -50,8 +53,9 @@ function drawtextSegment(textFile) {
 
 // Assemble slides/clips into an MP4 with xfade transitions.
 // slides: [{ localPath: string, duration: number, isVideo: boolean, text?: string }]
-// isVideo=true  → raw video clip, passed directly to FFmpeg (no Sharp)
-// isVideo=false → pre-rendered image from slide-gen, looped with -loop 1
+// isVideo=true  → raw video clip; input uses -stream_loop -1 so any clip length is padded
+//                 to slide.duration without the `loop` filter (which has HEVC issues)
+// isVideo=false → pre-rendered PNG from slide-gen, looped with -loop 1
 // text (isVideo only) → optional overlay text burned in via FFmpeg drawtext
 function encodeVideo(slides, audioPath = null) {
   return new Promise((resolve, reject) => {
@@ -66,10 +70,16 @@ function encodeVideo(slides, audioPath = null) {
 
     const args = []
 
-    // Images: -loop 1 -t D; video clips: just -i (duration trimmed in filter_complex)
+    // Build input args.
+    // Images: -loop 1 -t D  (FFmpeg loops the still image for D seconds)
+    // Videos: -stream_loop -1 -t D  (demuxer-level loop — reliable with ANY codec incl. HEVC)
+    //   -stream_loop loops at the packet level before decoding, avoiding the `loop` filter's
+    //   frame-buffer issues with HEVC B-frames. -t caps the total input duration.
     slides.forEach(slide => {
       if (slide.isVideo) {
-        args.push('-i', slide.localPath)
+        // Extra 0.5s buffer above target duration so trim has headroom to produce exactly D s.
+        const tCap = String(slide.duration + 0.5)
+        args.push('-stream_loop', '-1', '-t', tCap, '-i', slide.localPath)
       } else {
         args.push('-loop', '1', '-t', String(slide.duration), '-i', slide.localPath)
       }
@@ -81,7 +91,9 @@ function encodeVideo(slides, audioPath = null) {
       const s = slides[0]
       if (s.isVideo) {
         const d = s.duration
-        let f = `[0:v]${BASE_SCALE},setpts=PTS-STARTPTS,trim=duration=${d},setpts=PTS-STARTPTS,loop=loop=-1:size=32767,trim=duration=${d},setpts=PTS-STARTPTS`
+        // Simple: scale → normalize PTS → trim to exact duration → reset PTS
+        // No loop filter needed — input is already looped via -stream_loop -1
+        let f = `[0:v]${BASE_SCALE},setpts=PTS-STARTPTS,trim=duration=${d},setpts=PTS-STARTPTS`
         if (s.text) {
           const tf = writeTempText(s.text)
           textTempFiles.push(tf)
@@ -89,19 +101,19 @@ function encodeVideo(slides, audioPath = null) {
         }
         filterComplex = `${f}[vout]`
       } else {
-        // Ken Burns: slow zoom-in 1x→1.3x over the slide duration.
-        // Pre-scale 1.3× (1080→1404, 1920→2496) so at max zoom (z=1.3) zoompan crops
-        // exactly 1080px of the 1404px source → net 1:1 pixels, zero upscale blur.
+        // Ken Burns: zoom 1.0→1.1 (mild — avoids bilinear upscale blur of larger zooms).
+        // Max zoom capped at 1.1× so the crop is only 982px → 1080px (9% upscale vs 31%
+        // at the previous 1.3× cap), keeping the image crystal-clear throughout the slide.
         const d = Math.max(1, Math.round(s.duration * 30))
         const kb = [
-          `zoompan=z='min(zoom+0.0015,1.3)'`,
+          `zoompan=z='min(zoom+0.0008,1.1)'`,
           `x='iw/2-(iw/zoom/2)'`,
           `y='ih/2-(ih/zoom/2)'`,
           `d=${d}`,
-          `s=1404x2496`,
+          `s=1080x1920`,
           `fps=30`
         ].join(':')
-        let f = `[0:v]scale=1404:2496:flags=lanczos,${kb},scale=1080:1920:flags=lanczos,setsar=1`
+        let f = `[0:v]${kb},setsar=1`
         if (s.text) {
           const tf = writeTempText(s.text)
           textTempFiles.push(tf)
@@ -113,15 +125,12 @@ function encodeVideo(slides, audioPath = null) {
     } else {
       const parts = []
 
-      // Normalize each input; video clips use trim+loop+trim to enforce exact duration
-      // regardless of whether the actual clip is shorter or longer than slide.duration.
       slides.forEach((slide, i) => {
         if (slide.isVideo) {
           const d = slide.duration
-          // 1) scale+normalize  2) reset PTS  3) trim (handles clips longer than d)
-          // 4) loop indefinitely (pads clips shorter than d, buffers ≤ d*fps frames)
-          // 5) trim again to exactly d  6) reset PTS for clean xfade input
-          let f = `[${i}:v]${BASE_SCALE},setpts=PTS-STARTPTS,trim=duration=${d},setpts=PTS-STARTPTS,loop=loop=-1:size=32767,trim=duration=${d},setpts=PTS-STARTPTS`
+          // Input is already looped via -stream_loop -1; just scale → normalize → trim → reset.
+          // trim=duration ensures exactly d seconds even if stream_loop produced slightly more.
+          let f = `[${i}:v]${BASE_SCALE},setpts=PTS-STARTPTS,trim=duration=${d},setpts=PTS-STARTPTS`
           if (slide.text) {
             const tf = writeTempText(slide.text)
             textTempFiles.push(tf)
@@ -129,18 +138,17 @@ function encodeVideo(slides, audioPath = null) {
           }
           parts.push(`${f}[s${i}]`)
         } else {
-          // Ken Burns: slow zoom-in 1x→1.3x over the slide duration.
-          // Pre-scale 1.3× so at max zoom zoompan reads at 1:1 source pixels (no upscale blur).
+          // Ken Burns: zoom 1.0→1.1 — subtle motion without bilinear upscale blur.
           const d = Math.max(1, Math.round(slide.duration * 30))
           const kb = [
-            `zoompan=z='min(zoom+0.0015,1.3)'`,
+            `zoompan=z='min(zoom+0.0008,1.1)'`,
             `x='iw/2-(iw/zoom/2)'`,
             `y='ih/2-(ih/zoom/2)'`,
             `d=${d}`,
-            `s=1404x2496`,
+            `s=1080x1920`,
             `fps=30`
           ].join(':')
-          let f = `[${i}:v]scale=1404:2496:flags=lanczos,${kb},scale=1080:1920:flags=lanczos,setsar=1`
+          let f = `[${i}:v]${kb},setsar=1`
           if (slide.text) {
             const tf = writeTempText(slide.text)
             textTempFiles.push(tf)
@@ -151,8 +159,8 @@ function encodeVideo(slides, audioPath = null) {
       })
 
       // Chain xfade transitions.
-      // Track actualOffset = real accumulated [vout] duration after each xfade.
-      // xfade output = offset + B.duration. Using actualOffset (not naive timeOffset)
+      // actualOffset tracks real accumulated [vout] duration after each xfade.
+      // xfade output length = offset + B.duration. Using actualOffset (not naive sum)
       // guarantees offset < prev_stream_duration so xfade always includes B content.
       let prevLabel = 's0'
       let actualOffset = slides[0].duration
@@ -181,7 +189,6 @@ function encodeVideo(slides, audioPath = null) {
     args.push('-map', outputLabel)
 
     if (audioPath) {
-      // Audio input index = number of slide inputs
       args.push('-map', `${slides.length}:a`)
       args.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
       args.push('-c:a', 'aac', '-b:a', '192k')
@@ -197,13 +204,26 @@ function encodeVideo(slides, audioPath = null) {
     console.log(`[ffmpeg] spawn slides=${slides.length} fc_len=${filterComplex.length}`)
 
     const proc = spawn('ffmpeg', args)
-    let stderr = ''
-    proc.stderr.on('data', d => { stderr += d.toString() })
+    // Capture both beginning and end of stderr so filter errors (early) and encoding
+    // errors (late) are both visible in the stored error_message.
+    let stderrHead = ''
+    let stderrTail = ''
+    proc.stderr.on('data', d => {
+      const chunk = d.toString()
+      if (stderrHead.length < 800) stderrHead += chunk
+      stderrTail += chunk
+      if (stderrTail.length > 1500) stderrTail = stderrTail.slice(-1500)
+    })
     const cleanupTextFiles = () => textTempFiles.forEach(f => { try { fs.unlinkSync(f) } catch {} })
     proc.on('close', code => {
       cleanupTextFiles()
       if (code === 0) resolve(outputPath)
-      else reject(new Error(`FFmpeg exit ${code}:\n${stderr.slice(-1000)}`))
+      else {
+        const head = stderrHead.slice(0, 800)
+        const tail = stderrTail.slice(-700)
+        const combined = head === tail ? head : `${head}\n...\n${tail}`
+        reject(new Error(`FFmpeg exit ${code}:\n${combined}`))
+      }
     })
     proc.on('error', err => {
       cleanupTextFiles()
