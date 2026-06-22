@@ -58,12 +58,13 @@ function encodeVideo(slides, audioPath = null) {
     const outputPath = path.join(os.tmpdir(), `rs_out_${randomUUID()}.mp4`)
     const textTempFiles = []  // cleaned up after FFmpeg exits
 
-    // Hard cap: sum of all slide durations minus xfade overlaps.
-    // -shortest is unreliable with filter_complex+zoompan (stream EOF not signaled properly),
-    // causing audio to become the "shortest" stream and driving a 6-min reel.
-    const totalDuration = slides.length <= 1
-      ? (slides[0]?.duration ?? 4)
-      : slides.reduce((sum, s) => sum + s.duration, 0) - (slides.length - 1) * FADE_DUR
+    // Hard cap on audio: sum of all slide durations (no xfade deduction).
+    // The xfade chain after the first transition has offset >= prev stream duration,
+    // so effective overlaps are ~0; actual [vout] ≈ sum - FADE_DUR.
+    // Using plain sum as cap gives a ~0.5s audio tail after video ends — negligible.
+    // -shortest is dropped: it was reading filter_complex intermediate stream EOF
+    // as the "shortest" stream and capping the reel at the audio duration (6+ min).
+    const totalDuration = slides.reduce((sum, s) => sum + s.duration, 0)
 
     const args = []
 
@@ -173,7 +174,7 @@ function encodeVideo(slides, audioPath = null) {
       // Audio input index = number of slide inputs
       args.push('-map', `${slides.length}:a`)
       args.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
-      args.push('-c:a', 'aac', '-b:a', '192k', '-shortest')
+      args.push('-c:a', 'aac', '-b:a', '192k')
       args.push('-t', totalDuration.toFixed(3))
     } else {
       args.push('-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
