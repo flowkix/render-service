@@ -7,6 +7,7 @@ const { randomUUID } = require('crypto')
 const { renderReel } = require('./src/render')
 const { getClient } = require('./src/supabase')
 const { downloadFile, extFromUrl } = require('./src/downloader')
+const { generateEvScene } = require('./src/ev-scene')
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -79,6 +80,28 @@ app.post('/thumbnail', async (req, res) => {
   } finally {
     if (videoPath) try { fs.unlinkSync(videoPath) } catch (_) {}
     try { fs.unlinkSync(outPath) } catch (_) {}
+  }
+})
+
+app.post('/generate-ev-scene', async (req, res) => {
+  const { prospect_id, logo_url, company_name, activation_description, brand_concept } = req.body
+  if (!prospect_id || !company_name) {
+    return res.status(400).json({ ok: false, error: 'prospect_id and company_name required' })
+  }
+  try {
+    console.log(`[ev-scene] start — ${prospect_id} / ${company_name}`)
+    const result = await generateEvScene({
+      prospectId: prospect_id,
+      logoUrl: logo_url || '',
+      companyName: company_name,
+      activationDescription: activation_description || 'a brand activation event',
+      brandConcept: brand_concept || 'Brand Activation',
+    })
+    console.log(`[ev-scene] done — ${result.ev_image_url}`)
+    res.json({ ok: true, ...result })
+  } catch (err) {
+    console.error(`[ev-scene] FAILED — ${prospect_id}:`, err.message)
+    res.status(500).json({ ok: false, error: err.message })
   }
 })
 
