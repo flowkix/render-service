@@ -20,36 +20,41 @@ function buildPass1Prompt(activationDescription, brandConcept) {
 
 function buildPass2Prompt(companyName) {
   return [
-    `Image 1 = SNACKET EV in a scene. Image 2 = ${companyName} logo.`,
+    `Image 1 = SNACKET EV in a scene. Image 2 = ${companyName} logo (use this logo EXACTLY as shown — do not invent icons).`,
     ``,
-    `TASK — Replace the SNACKET branding on exactly 3 surfaces inside the service area with the ${companyName} logo from Image 2.`,
+    `TASK — Scan the entire EV carefully. Find EVERY place where the SNACKET robot logo appears (circular design with robot/gear/coffee-cup icons and the word SNACKET). Replace ALL instances with Image 2 logo, large and centered on each surface.`,
     ``,
-    `SURFACE 1 — Left circular medallion: On the LEFT interior wall of the service area there is a large circular medallion. Replace the SNACKET logo inside this circle with Image 2 logo, large and centered.`,
+    `You must find and replace ALL of these:`,
+    `1. The circular medallion on the LEFT interior wall of the service area`,
+    `2. The large circular disc on the CENTER interior wall (3 faucet handles are mounted IN FRONT of it — keep the faucets, only replace the disc logo)`,
+    `3. The underside panel of the LEFT raised wing door (the smaller door) — flat rectangular panel facing downward`,
+    `4. The underside panel of the RIGHT raised wing door (the larger door) — flat rectangular panel facing downward`,
     ``,
-    `SURFACE 2 — Center circular disc behind the faucets: The large circular disc on the center wall surface. The 3 faucet handles are physical hardware mounted IN FRONT of this disc — do not remove them. Replace the SNACKET branding on the disc with Image 2 logo.`,
-    ``,
-    `SURFACE 3 — Icon strip: The narrow horizontal band at the top of the service opening. Replace SNACKET icons/text with the company name "${companyName}" in small letters repeated evenly across the full strip width.`,
+    `ALSO replace:`,
+    `5. Icon strip — the narrow horizontal band at the top of the service opening: replace all SNACKET icons with the company name "${companyName}" in small letters repeated across the strip`,
     ``,
     `STRICT RULES:`,
-    `- Replace ONLY the 3 surfaces above. Do not touch anything else.`,
-    `- Scene background, EV color, structure, faucets, QR code, serving tray, wheels, cab, wing doors — all unchanged.`,
+    `- Use Image 2 logo EXACTLY. Do not modify, stylize, or invent any part of Image 2.`,
+    `- Do not change anything except the 5 surfaces listed. Scene background, EV color, EV structure, faucets, QR code, serving tray, wheels, cab — all unchanged.`,
+    `- Zero SNACKET logos must remain visible on the EV in the output.`,
   ].join('\n')
 }
 
 function buildPass3Prompt(companyName) {
   return [
-    `Image 1 = EV in a scene. Image 2 = ${companyName} logo.`,
+    `Image 1 = EV in a scene. Image 2 = ${companyName} logo (use this EXACTLY — do not invent icons).`,
     ``,
-    `TASK — Replace the logo on the UNDERSIDE PANELS of the two raised wing doors with Image 2 logo.`,
+    `CHECK AND FIX: Look at the two raised wing doors that open like wings at the top of the EV. Each door has a FLAT PANEL on its UNDERSIDE (bottom face, facing downward when the door is raised).`,
     ``,
-    `DOOR PANEL 1 — LEFT wing door (the smaller door on the left side): When this door is raised open like a wing, its flat bottom face is exposed and faces downward. That flat rectangular panel currently has a circular logo with SNACKET text on it. Replace that circular SNACKET logo with Image 2 logo, large and centered on the panel.`,
+    `- LEFT wing door (smaller, viewer's left): Does its bottom flat panel show the ${companyName} logo from Image 2? If NOT — apply Image 2 logo there now, large and centered.`,
+    `- RIGHT wing door (larger, viewer's right): Does its bottom flat panel show the ${companyName} logo from Image 2? If NOT — apply Image 2 logo there now, large and centered.`,
     ``,
-    `DOOR PANEL 2 — RIGHT wing door (the larger door on the right side): Same as above — the flat bottom face of the right raised door currently shows a circular SNACKET logo. Replace it with Image 2 logo, large and centered.`,
+    `Also check: does the LEFT interior wall circular medallion show Image 2 logo? If it shows anything other than Image 2 logo — replace it now with Image 2 logo.`,
     ``,
     `STRICT RULES:`,
-    `- Replace ONLY the logo on those 2 flat door underside panels. Change nothing else.`,
-    `- The top surfaces of the doors (the gray exterior panels facing up/outward) must remain unchanged.`,
-    `- Do not change the scene, the EV color, the interior, the faucets, or any other surface.`,
+    `- Use Image 2 EXACTLY as provided. Do not stylize or modify the logo.`,
+    `- Change ONLY the surfaces that do not yet show the correct ${companyName} logo.`,
+    `- Do not alter the scene, EV color, faucets, QR code, or any already-correct surfaces.`,
   ].join('\n')
 }
 
