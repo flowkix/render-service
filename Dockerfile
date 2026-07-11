@@ -1,7 +1,10 @@
 FROM node:20-slim
 
-# FFmpeg + Sharp native deps (libvips) + font tooling + system Chromium (for Puppeteer)
-# Using system Chromium avoids root vs appuser cache path mismatch with bundled download
+# Skip Puppeteer's bundled Chromium download — we use system Chromium instead
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# FFmpeg + Sharp native deps (libvips) + font tooling + system Chromium
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     fontconfig \
@@ -31,8 +34,6 @@ USER appuser
 ENV PORT=3001
 ENV FONT_PATH=/fonts/BarlowCondensed-Bold.ttf
 ENV LOGO_PATH=/logo/snacket-logo.png
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 EXPOSE 3001
 
