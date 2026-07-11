@@ -6,10 +6,14 @@ async function generateDeckPdf({ deckUrl, prospectId }) {
   const sbKey = process.env.SNACKET_OS_SUPABASE_KEY
   if (!sbKey) throw new Error('SNACKET_OS_SUPABASE_KEY env var not set')
 
-  const browser = await puppeteer.launch({
+  const launchOpts = {
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     headless: true,
-  })
+  }
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+  }
+  const browser = await puppeteer.launch(launchOpts)
 
   let pdfBuffer
   try {
