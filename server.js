@@ -8,6 +8,7 @@ const { renderReel } = require('./src/render')
 const { getClient } = require('./src/supabase')
 const { downloadFile, extFromUrl } = require('./src/downloader')
 const { generateEvScene } = require('./src/ev-scene')
+const { generateDeckPdf } = require('./src/deck-pdf')
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -101,6 +102,22 @@ app.post('/generate-ev-scene', async (req, res) => {
     res.json({ ok: true, ...result })
   } catch (err) {
     console.error(`[ev-scene] FAILED — ${prospect_id}:`, err.message)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.post('/generate-pdf', async (req, res) => {
+  const { deck_url, prospect_id } = req.body
+  if (!deck_url || !prospect_id) {
+    return res.status(400).json({ ok: false, error: 'deck_url and prospect_id required' })
+  }
+  try {
+    console.log(`[deck-pdf] start — ${prospect_id} / ${deck_url}`)
+    const result = await generateDeckPdf({ deckUrl: deck_url, prospectId: prospect_id })
+    console.log(`[deck-pdf] done — ${result.pdf_url}`)
+    res.json({ ok: true, ...result })
+  } catch (err) {
+    console.error(`[deck-pdf] FAILED — ${prospect_id}:`, err.message)
     res.status(500).json({ ok: false, error: err.message })
   }
 })
