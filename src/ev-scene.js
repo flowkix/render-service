@@ -20,28 +20,36 @@ function buildPass1Prompt(activationDescription, brandConcept) {
 
 function buildPass2Prompt(companyName) {
   return [
-    `Image 1 = SNACKET EV in a scene. Image 2 = ${companyName} logo (the replacement logo).`,
+    `Image 1 = SNACKET EV in a scene. Image 2 = ${companyName} logo.`,
     ``,
-    `TASK — Replace the SNACKET branding on exactly 5 surfaces of the EV with the ${companyName} logo from Image 2.`,
+    `TASK — Replace the SNACKET branding on exactly 3 surfaces inside the service area with the ${companyName} logo from Image 2.`,
     ``,
-    `*** TOP PRIORITY — WING DOOR PANELS (do these first, they are the most important) ***`,
+    `SURFACE 1 — Left circular medallion: On the LEFT interior wall of the service area there is a large circular medallion. Replace the SNACKET logo inside this circle with Image 2 logo, large and centered.`,
     ``,
-    `SURFACE 1 — LEFT wing door panel (small rear door): Look at the two raised wing doors that open upward like wings. The LEFT door is the smaller one at the back. On its FLAT BOTTOM FACE — the rectangular panel that faces DOWNWARD toward the ground when the door is raised — there is a circular SNACKET logo printed on it. Replace that circular SNACKET logo with Image 2 logo, centered and large, filling the panel.`,
+    `SURFACE 2 — Center circular disc behind the faucets: The large circular disc on the center wall surface. The 3 faucet handles are physical hardware mounted IN FRONT of this disc — do not remove them. Replace the SNACKET branding on the disc with Image 2 logo.`,
     ``,
-    `SURFACE 2 — RIGHT wing door panel (large front door): The RIGHT door is the larger one at the front. On its FLAT BOTTOM FACE — the rectangular panel that faces DOWNWARD when the door is raised — there is also a circular SNACKET logo. Replace that circular SNACKET logo with Image 2 logo, centered and large, filling the panel.`,
-    ``,
-    `*** SECONDARY SURFACES ***`,
-    ``,
-    `SURFACE 3 — Left circular medallion on interior wall: The large circular disc on the LEFT interior wall of the service area. Replace the SNACKET logo inside this circle with Image 2 logo.`,
-    ``,
-    `SURFACE 4 — Center circular disc behind the faucets: The large circular disc on the center wall surface behind the faucet handles. Replace the SNACKET branding on this disc with Image 2 logo. Do not touch the faucets.`,
-    ``,
-    `SURFACE 5 — Icon strip: The narrow horizontal band at the top of the service opening. Replace SNACKET icons/text with the company name "${companyName}" repeated evenly across the full strip width.`,
+    `SURFACE 3 — Icon strip: The narrow horizontal band at the top of the service opening. Replace SNACKET icons/text with the company name "${companyName}" in small letters repeated evenly across the full strip width.`,
     ``,
     `STRICT RULES:`,
-    `- Replace ONLY the 5 surfaces above. Change nothing else.`,
-    `- The scene background, EV structure, color, hardware, faucets, QR code, serving tray, wheels, cab — all must remain exactly as in Image 1.`,
-    `- Do not add text overlays, do not change EV color, do not recompose the scene.`,
+    `- Replace ONLY the 3 surfaces above. Do not touch anything else.`,
+    `- Scene background, EV color, structure, faucets, QR code, serving tray, wheels, cab, wing doors — all unchanged.`,
+  ].join('\n')
+}
+
+function buildPass3Prompt(companyName) {
+  return [
+    `Image 1 = EV in a scene. Image 2 = ${companyName} logo.`,
+    ``,
+    `TASK — Replace the logo on the UNDERSIDE PANELS of the two raised wing doors with Image 2 logo.`,
+    ``,
+    `DOOR PANEL 1 — LEFT wing door (the smaller door on the left side): When this door is raised open like a wing, its flat bottom face is exposed and faces downward. That flat rectangular panel currently has a circular logo with SNACKET text on it. Replace that circular SNACKET logo with Image 2 logo, large and centered on the panel.`,
+    ``,
+    `DOOR PANEL 2 — RIGHT wing door (the larger door on the right side): Same as above — the flat bottom face of the right raised door currently shows a circular SNACKET logo. Replace it with Image 2 logo, large and centered.`,
+    ``,
+    `STRICT RULES:`,
+    `- Replace ONLY the logo on those 2 flat door underside panels. Change nothing else.`,
+    `- The top surfaces of the doors (the gray exterior panels facing up/outward) must remain unchanged.`,
+    `- Do not change the scene, the EV color, the interior, the faucets, or any other surface.`,
   ].join('\n')
 }
 
@@ -92,10 +100,20 @@ async function uploadToSnacketOS(imageBuffer, prospectId) {
 }
 
 async function generateEvScene({ prospectId, logoUrl, companyName, activationDescription, brandConcept }) {
-  // --- Pass 1: background only ---
-  console.log(`[ev-scene] pass 1 — background for ${prospectId}`)
+  // Fetch shared assets up front
+  console.log(`[ev-scene] fetching assets for ${prospectId}`)
   const evBuffer = await fetchBuffer(EV_REF_URL)
 
+  let logoBuffer = null
+  let logoMime = 'image/png'
+  if (logoUrl) {
+    console.log(`[ev-scene] downloading logo: ${logoUrl}`)
+    logoBuffer = await fetchBuffer(logoUrl)
+    logoMime = /\.jpe?g$/i.test(logoUrl) ? 'image/jpeg' : 'image/png'
+  }
+
+  // --- Pass 1: background only ---
+  console.log(`[ev-scene] pass 1 — background`)
   const pass1Parts = [
     { text: buildPass1Prompt(activationDescription, brandConcept) },
     { inlineData: { mimeType: 'image/jpeg', data: evBuffer.toString('base64') } },
@@ -103,22 +121,27 @@ async function generateEvScene({ prospectId, logoUrl, companyName, activationDes
   const pass1Resp = await callGemini(pass1Parts, 'pass1')
   const pass1Buffer = extractImageBuffer(pass1Resp, 'pass1')
 
-  // --- Pass 2: logo rebranding on 5 surfaces ---
-  console.log(`[ev-scene] pass 2 — rebranding ${companyName} on 5 surfaces`)
+  // --- Pass 2: 3 interior surfaces ---
+  console.log(`[ev-scene] pass 2 — interior surfaces`)
   const pass2Parts = [
     { text: buildPass2Prompt(companyName) },
     { inlineData: { mimeType: 'image/png', data: pass1Buffer.toString('base64') } },
   ]
-
-  if (logoUrl) {
-    console.log(`[ev-scene] downloading logo: ${logoUrl}`)
-    const logoBuffer = await fetchBuffer(logoUrl)
-    const logoMime = /\.jpe?g$/i.test(logoUrl) ? 'image/jpeg' : 'image/png'
-    pass2Parts.push({ inlineData: { mimeType: logoMime, data: logoBuffer.toString('base64') } })
-  }
+  if (logoBuffer) pass2Parts.push({ inlineData: { mimeType: logoMime, data: logoBuffer.toString('base64') } })
 
   const pass2Resp = await callGemini(pass2Parts, 'pass2')
-  const finalBuffer = extractImageBuffer(pass2Resp, 'pass2')
+  const pass2Buffer = extractImageBuffer(pass2Resp, 'pass2')
+
+  // --- Pass 3: wing door panels ---
+  console.log(`[ev-scene] pass 3 — wing door panels`)
+  const pass3Parts = [
+    { text: buildPass3Prompt(companyName) },
+    { inlineData: { mimeType: 'image/png', data: pass2Buffer.toString('base64') } },
+  ]
+  if (logoBuffer) pass3Parts.push({ inlineData: { mimeType: logoMime, data: logoBuffer.toString('base64') } })
+
+  const pass3Resp = await callGemini(pass3Parts, 'pass3')
+  const finalBuffer = extractImageBuffer(pass3Resp, 'pass3')
 
   console.log(`[ev-scene] uploading final (${finalBuffer.length} bytes)`)
   const evImageUrl = await uploadToSnacketOS(finalBuffer, prospectId)
