@@ -37,6 +37,30 @@ async function uploadVideo(localPath, bucket, storagePath) {
   return `${publicUrl}?v=${Date.now()}`
 }
 
+// Upload a local PNG file to Supabase Storage. Returns the public URL.
+async function uploadImage(localPath, bucket, storagePath) {
+  const supabase = getClient()
+  const fileStream = fs.createReadStream(localPath)
+  const { size } = fs.statSync(localPath)
+
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(storagePath, fileStream, {
+      contentType: 'image/png',
+      duplex: 'half',
+      upsert: true,
+      headers: { 'content-length': String(size) }
+    })
+
+  if (error) throw new Error(`Supabase image upload failed: ${error.message}`)
+
+  const { data: { publicUrl } } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(storagePath)
+
+  return publicUrl
+}
+
 // Mark render as succeeded — write video_url, restore status to scheduled
 // (content_calendar.status does not have 'approved'; valid: draft/scheduled/rendering/failed/published)
 async function markSuccess(reelId, videoUrl) {
@@ -60,4 +84,4 @@ async function markFailed(reelId, errorMessage) {
   if (error) console.error(`[supabase] markFailed warning for ${reelId}: ${error.message}`)
 }
 
-module.exports = { getClient, uploadVideo, markSuccess, markFailed }
+module.exports = { getClient, uploadVideo, uploadImage, markSuccess, markFailed }

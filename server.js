@@ -9,6 +9,8 @@ const { getClient } = require('./src/supabase')
 const { downloadFile, extFromUrl } = require('./src/downloader')
 const { generateEvScene } = require('./src/ev-scene')
 const { generateDeckPdf } = require('./src/deck-pdf')
+const { generateCarouselSlide } = require('./src/slide-gen')
+const { uploadImage } = require('./src/supabase')
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -119,6 +121,32 @@ app.post('/generate-pdf', async (req, res) => {
   } catch (err) {
     console.error(`[deck-pdf] FAILED — ${prospect_id}:`, err.message)
     res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.post('/generate-carousel-slide', async (req, res) => {
+  const { photo_url, title, body, cta, post_id, slide_index } = req.body
+  if (!photo_url || post_id === undefined || slide_index === undefined) {
+    return res.status(400).json({ ok: false, error: 'photo_url, post_id, and slide_index required' })
+  }
+  let srcPath = null
+  let outPath = null
+  try {
+    console.log(`[carousel-slide] start — post=${post_id} slide=${slide_index}`)
+    srcPath = await downloadFile(photo_url, extFromUrl(photo_url))
+    outPath = await generateCarouselSlide(srcPath, { title, body, cta })
+
+    const storagePath = `a1b2c3d4-0001-0001-0001-000000000001/rendered/${post_id}-slide-${slide_index}.png`
+    const imageUrl = await uploadImage(outPath, 'assets', storagePath)
+
+    console.log(`[carousel-slide] done — ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl })
+  } catch (err) {
+    console.error(`[carousel-slide] FAILED — post=${post_id} slide=${slide_index}:`, err.message)
+    res.status(500).json({ ok: false, error: err.message })
+  } finally {
+    if (srcPath) try { fs.unlinkSync(srcPath) } catch (_) {}
+    if (outPath) try { fs.unlinkSync(outPath) } catch (_) {}
   }
 })
 
