@@ -297,7 +297,7 @@ function buildOverlaySvgFor(width, height, title, body, cta) {
     titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
 
     if (titleStartY >= minTitleTop || shrink <= 0.55) {
-      if (titleStartY < minTitleTop) titleStartY = minTitleTop // last-resort floor, extreme inputs only
+      if (titleStartY < minTitleTop) titleStartY = minTitleTop // last-resort floor — narrows but does not fully eliminate the clamp failure mode from the previous fix; only reachable when title+body+cta are all near their length bounds simultaneously
       break
     }
   }
