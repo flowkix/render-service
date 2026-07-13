@@ -23,13 +23,16 @@ const CASES = [
     cta: 'Read the full story →',
   },
   {
-    // Stress case: long title that wraps to ~3 lines at 1200px width (wrap ~24 chars/line),
-    // combined with a 2-line body and no cta, at LinkedIn dimensions. This is the scenario
-    // most likely to push the title's start position above the top edge of a short canvas.
+    // Stress case: title near the real production worst case — WF7's Map Config node
+    // truncates `hook` to ~70 chars before it reaches this endpoint, so this uses a
+    // 65-char title (realistic upper bound, not an arbitrary long string). At 1200px
+    // width this still wraps to 4 lines with the default title size, which is exactly
+    // the scenario that pushed titleStartY above the top edge and clipped glyph tops
+    // (confirmed via pixel-row brightness analysis) before the shrink-to-fit fix.
     name: 'linkedin-long',
     width: 1200,
     height: 627,
-    title: 'Why Charlotte businesses are switching to mobile electric vehicle activations this year',
+    title: 'Why Charlotte businesses are switching to mobile EV activations',
     body: 'Lower cost per impression, zero emissions, and a presence your competitors cannot match at events.',
     cta: '',
   },

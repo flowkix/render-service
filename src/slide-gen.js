@@ -238,10 +238,8 @@ function wrapOverlayText(text, maxLen) {
 function buildOverlaySvgFor(width, height, title, body, cta) {
   const scale = width / 1080
   const marginX = Math.round(64 * scale)
-  const titleFontSize = Math.round(64 * scale)
   const bodyFontSize = Math.round(36 * scale)
   const ctaFontSize = Math.round(32 * scale)
-  const titleLineH = Math.round(78 * scale)
   const bodyLineH = Math.round(52 * scale)
   const bodyWrapChars = Math.round(50 * scale)
 
@@ -255,10 +253,7 @@ function buildOverlaySvgFor(width, height, title, body, cta) {
   // original square scale (952px usable / 64px font / 22 chars ≈ 0.676), so the square
   // carousel output is unaffected; this only changes non-square canvases.
   const AVG_CHAR_TO_FONT_RATIO = 0.66
-  const usableWidth = width - marginX * 2
-  const titleWrapChars = Math.max(8, Math.floor(usableWidth / (titleFontSize * AVG_CHAR_TO_FONT_RATIO)))
 
-  const titleLines = wrapOverlayText(String(title || '').toUpperCase(), titleWrapChars)
   const bodyLines = wrapOverlayText(body, bodyWrapChars)
 
   const BOTTOM = height - marginX
@@ -270,18 +265,42 @@ function buildOverlaySvgFor(width, height, title, body, cta) {
   const bodyEndY = y
   const bodyStartY = bodyEndY - (bodyLines.length - 1) * bodyLineH
   const titleEndY = bodyStartY - Math.round(84 * scale)
-  let titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
 
-  // Safety clamp: on short canvases, a title with many wrapped lines can still stack
-  // above the top of the canvas even with the corrected wrap width above. `titleStartY`
-  // is the SVG baseline of the first line, but glyphs extend upward from the baseline by
-  // roughly the font's ascent (~0.75x font-size for bold sans-serif) — so the clamp must
-  // account for that ascent, not just pad the baseline itself, or the glyph tops still
-  // render above y=0 (verified: baseline at y=39 with a 71px font clips glyph tops at
-  // roughly y=-14). Never let the estimated glyph top go above a small safe margin.
-  const titleAscent = titleFontSize * 0.75
-  const minTitleTop = Math.round(16 * scale) + titleAscent
-  if (titleStartY < minTitleTop) titleStartY = minTitleTop
+  // Shrink-to-fit: a post-hoc position clamp (previous approach) can stop titleStartY
+  // from going MORE negative, but it can't manufacture vertical space that doesn't
+  // exist — a title that wraps to more lines than fit in the available budget at full
+  // size still has its top lines rendered above y=0 and sliced off (verified via
+  // pixel-row brightness analysis: rows 0+ were flat-saturated, the signature of a
+  // glyph sheared by the canvas edge, not a natural glyph apex). So instead of sizing
+  // the title first and fixing up the position after, compute the vertical budget
+  // available for the title block (titleEndY down to a safe top margin) and shrink
+  // titleFontSize/titleLineH/titleWrapChars together — then re-wrap — until the
+  // wrapped line count actually fits that budget. Floors at 55% of full size so
+  // extreme inputs degrade gracefully instead of shrinking to unreadable text.
+  const titleFontSizeFull = Math.round(64 * scale)
+  const titleLineHFull = Math.round(78 * scale)
+  const topMargin = Math.round(16 * scale)
+  let titleFontSize = titleFontSizeFull
+  let titleLineH = titleLineHFull
+  let titleLines
+  let titleStartY
+  for (let shrinkStep = 0; shrinkStep <= 10; shrinkStep++) {
+    const shrink = 1 - shrinkStep * 0.045 // down to 0.55 at step 10
+    titleFontSize = Math.max(24, Math.round(titleFontSizeFull * shrink))
+    titleLineH = Math.max(28, Math.round(titleLineHFull * shrink))
+    const usableWidth = width - marginX * 2
+    const titleWrapChars = Math.max(8, Math.floor(usableWidth / (titleFontSize * AVG_CHAR_TO_FONT_RATIO)))
+    titleLines = wrapOverlayText(String(title || '').toUpperCase(), titleWrapChars)
+
+    const titleAscent = titleFontSize * 0.75
+    const minTitleTop = topMargin + titleAscent
+    titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
+
+    if (titleStartY >= minTitleTop || shrink <= 0.55) {
+      if (titleStartY < minTitleTop) titleStartY = minTitleTop // last-resort floor, extreme inputs only
+      break
+    }
+  }
 
   const titleText = titleLines.map((l, i) =>
     `<text x="${marginX}" y="${titleStartY + i * titleLineH}" font-size="${titleFontSize}" fill="white" font-weight="700" font-family="sans-serif" letter-spacing="3">${escapeXml(l)}</text>`
