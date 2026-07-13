@@ -243,8 +243,20 @@ function buildOverlaySvgFor(width, height, title, body, cta) {
   const ctaFontSize = Math.round(32 * scale)
   const titleLineH = Math.round(78 * scale)
   const bodyLineH = Math.round(52 * scale)
-  const titleWrapChars = Math.round(22 * (width / 1080))
-  const bodyWrapChars = Math.round(50 * (width / 1080))
+  const bodyWrapChars = Math.round(50 * scale)
+
+  // Title wrap width: derived from actual usable pixel width (canvas minus both
+  // margins) divided by an estimated glyph width for bold uppercase text with
+  // letter-spacing, rather than a flat char-count scaled off `width` alone. The old
+  // `Math.round(22 * scale)` heuristic was tuned to just fit the locked 1080x1080
+  // carousel case, but independent rounding of marginX/titleWrapChars at other scales
+  // let lines exceed the usable width (verified clipping "BUSINESSES" off the right
+  // edge at 1200x627). AVG_CHAR_TO_FONT_RATIO=0.66 reproduces titleWrapChars=22 at the
+  // original square scale (952px usable / 64px font / 22 chars ≈ 0.676), so the square
+  // carousel output is unaffected; this only changes non-square canvases.
+  const AVG_CHAR_TO_FONT_RATIO = 0.66
+  const usableWidth = width - marginX * 2
+  const titleWrapChars = Math.max(8, Math.floor(usableWidth / (titleFontSize * AVG_CHAR_TO_FONT_RATIO)))
 
   const titleLines = wrapOverlayText(String(title || '').toUpperCase(), titleWrapChars)
   const bodyLines = wrapOverlayText(body, bodyWrapChars)
@@ -258,7 +270,18 @@ function buildOverlaySvgFor(width, height, title, body, cta) {
   const bodyEndY = y
   const bodyStartY = bodyEndY - (bodyLines.length - 1) * bodyLineH
   const titleEndY = bodyStartY - Math.round(84 * scale)
-  const titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
+  let titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
+
+  // Safety clamp: on short canvases, a title with many wrapped lines can still stack
+  // above the top of the canvas even with the corrected wrap width above. `titleStartY`
+  // is the SVG baseline of the first line, but glyphs extend upward from the baseline by
+  // roughly the font's ascent (~0.75x font-size for bold sans-serif) — so the clamp must
+  // account for that ascent, not just pad the baseline itself, or the glyph tops still
+  // render above y=0 (verified: baseline at y=39 with a 71px font clips glyph tops at
+  // roughly y=-14). Never let the estimated glyph top go above a small safe margin.
+  const titleAscent = titleFontSize * 0.75
+  const minTitleTop = Math.round(16 * scale) + titleAscent
+  if (titleStartY < minTitleTop) titleStartY = minTitleTop
 
   const titleText = titleLines.map((l, i) =>
     `<text x="${marginX}" y="${titleStartY + i * titleLineH}" font-size="${titleFontSize}" fill="white" font-weight="700" font-family="sans-serif" letter-spacing="3">${escapeXml(l)}</text>`
