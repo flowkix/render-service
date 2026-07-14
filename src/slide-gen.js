@@ -214,4 +214,87 @@ async function generateCtaSlide(ctaText) {
   return outputPath
 }
 
-module.exports = { generateSlide, generateCtaSlide, wrapText }
+const CAROUSEL_SIZE = 1080
+
+// Word-wrap that respects explicit \n paragraph breaks first, then wraps at maxLen.
+function wrapCarouselText(text, maxLen) {
+  const paras = String(text || '').split(/\n+/).filter(Boolean)
+  const lines = []
+  for (const para of paras) {
+    const words = para.split(/\s+/).filter(Boolean)
+    let line = ''
+    for (const w of words) {
+      const candidate = line ? line + ' ' + w : w
+      if (candidate.length > maxLen && line) { lines.push(line); line = w }
+      else line = candidate
+    }
+    if (line) lines.push(line)
+  }
+  return lines
+}
+
+// SVG overlay: vignette (bottom-heavy) + title/body/cta, bottom-anchored layout.
+// Formula locked 2026-05-31 — see project memory project_render_pipeline.md.
+function buildCarouselOverlaySvg(title, body, cta) {
+  const titleLines = wrapCarouselText(String(title || '').toUpperCase(), 22)
+  const bodyLines = wrapCarouselText(body, 50)
+
+  const titleLineH = 78
+  const bodyLineH = 52
+  const BOTTOM = 1016
+
+  let y = BOTTOM
+  const ctaY = cta ? y : 0
+  if (cta) y -= 52
+  y -= 16
+
+  const bodyEndY = y
+  const bodyStartY = bodyEndY - (bodyLines.length - 1) * bodyLineH
+  const titleEndY = bodyStartY - 84
+  const titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
+
+  const titleText = titleLines.map((l, i) =>
+    `<text x="64" y="${titleStartY + i * titleLineH}" font-size="64" fill="white" font-weight="700" font-family="sans-serif" letter-spacing="3">${escapeXml(l)}</text>`
+  ).join('\n  ')
+
+  const bodyText = bodyLines.map((l, i) =>
+    `<text x="64" y="${bodyStartY + i * bodyLineH}" font-size="36" fill="rgba(255,255,255,0.92)" font-weight="300" font-family="sans-serif">${escapeXml(l)}</text>`
+  ).join('\n  ')
+
+  const ctaText = cta
+    ? `<text x="64" y="${ctaY}" font-size="32" fill="rgba(255,255,255,0.88)" font-family="sans-serif">${escapeXml(cta)}</text>`
+    : ''
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CAROUSEL_SIZE}" height="${CAROUSEL_SIZE}">
+  <defs>
+    <linearGradient id="carouselVig" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%"  stop-color="rgba(0,0,0,0.72)"/>
+      <stop offset="36%" stop-color="rgba(0,0,0,0.28)"/>
+      <stop offset="65%" stop-color="rgba(0,0,0,0)"/>
+    </linearGradient>
+  </defs>
+  <rect width="${CAROUSEL_SIZE}" height="${CAROUSEL_SIZE}" fill="url(#carouselVig)"/>
+  ${titleText}
+  ${bodyText}
+  ${ctaText}
+</svg>`
+}
+
+// Generate a carousel slide: real photo (cover-fit, EXIF-rotated) + clean text overlay.
+// NO logo. NO template background. Matches the raw-overlay style locked 2026-05-31.
+// Returns path to temp PNG.
+async function generateCarouselSlide(srcImagePath, { title, body, cta }) {
+  const outputPath = path.join(os.tmpdir(), `carousel_${randomUUID()}.png`)
+  const svgOverlay = Buffer.from(buildCarouselOverlaySvg(title, body, cta))
+
+  await sharp(srcImagePath)
+    .rotate()
+    .resize(CAROUSEL_SIZE, CAROUSEL_SIZE, { fit: 'cover', position: 'centre' })
+    .composite([{ input: svgOverlay, blend: 'over' }])
+    .png({ compressionLevel: 8 })
+    .toFile(outputPath)
+
+  return outputPath
+}
+
+module.exports = { generateSlide, generateCtaSlide, wrapText, generateCarouselSlide }
