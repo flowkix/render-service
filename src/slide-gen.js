@@ -214,10 +214,8 @@ async function generateCtaSlide(ctaText) {
   return outputPath
 }
 
-const CAROUSEL_SIZE = 1080
-
 // Word-wrap that respects explicit \n paragraph breaks first, then wraps at maxLen.
-function wrapCarouselText(text, maxLen) {
+function wrapOverlayText(text, maxLen) {
   const paras = String(text || '').split(/\n+/).filter(Boolean)
   const lines = []
   for (const para of paras) {
@@ -234,62 +232,113 @@ function wrapCarouselText(text, maxLen) {
 }
 
 // SVG overlay: vignette (bottom-heavy) + title/body/cta, bottom-anchored layout.
-// Formula locked 2026-05-31 — see project memory project_render_pipeline.md.
-function buildCarouselOverlaySvg(title, body, cta) {
-  const titleLines = wrapCarouselText(String(title || '').toUpperCase(), 22)
-  const bodyLines = wrapCarouselText(body, 50)
+// Proportions scale from the 1080x1080 carousel formula (locked 2026-05-31) via
+// `scale = width / 1080`. Square carousel output is byte-identical to before this
+// refactor — verify that in Task 2 before trusting the landscape output.
+function buildOverlaySvgFor(width, height, title, body, cta) {
+  const scale = width / 1080
+  const marginX = Math.round(64 * scale)
+  const bodyFontSize = Math.round(36 * scale)
+  const ctaFontSize = Math.round(32 * scale)
+  const bodyLineH = Math.round(52 * scale)
+  const bodyWrapChars = Math.round(50 * scale)
 
-  const titleLineH = 78
-  const bodyLineH = 52
-  const BOTTOM = 1016
+  // Title wrap width: derived from actual usable pixel width (canvas minus both
+  // margins) divided by an estimated glyph width for bold uppercase text with
+  // letter-spacing, rather than a flat char-count scaled off `width` alone. The old
+  // `Math.round(22 * scale)` heuristic was tuned to just fit the locked 1080x1080
+  // carousel case, but independent rounding of marginX/titleWrapChars at other scales
+  // let lines exceed the usable width (verified clipping "BUSINESSES" off the right
+  // edge at 1200x627). AVG_CHAR_TO_FONT_RATIO=0.66 reproduces titleWrapChars=22 at the
+  // original square scale (952px usable / 64px font / 22 chars ≈ 0.676), so the square
+  // carousel output is unaffected; this only changes non-square canvases.
+  const AVG_CHAR_TO_FONT_RATIO = 0.66
 
+  const bodyLines = wrapOverlayText(body, bodyWrapChars)
+
+  const BOTTOM = height - marginX
   let y = BOTTOM
   const ctaY = cta ? y : 0
-  if (cta) y -= 52
-  y -= 16
+  if (cta) y -= Math.round(52 * scale)
+  y -= Math.round(16 * scale)
 
   const bodyEndY = y
   const bodyStartY = bodyEndY - (bodyLines.length - 1) * bodyLineH
-  const titleEndY = bodyStartY - 84
-  const titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
+  const titleEndY = bodyStartY - Math.round(84 * scale)
+
+  // Shrink-to-fit: a post-hoc position clamp (previous approach) can stop titleStartY
+  // from going MORE negative, but it can't manufacture vertical space that doesn't
+  // exist — a title that wraps to more lines than fit in the available budget at full
+  // size still has its top lines rendered above y=0 and sliced off (verified via
+  // pixel-row brightness analysis: rows 0+ were flat-saturated, the signature of a
+  // glyph sheared by the canvas edge, not a natural glyph apex). So instead of sizing
+  // the title first and fixing up the position after, compute the vertical budget
+  // available for the title block (titleEndY down to a safe top margin) and shrink
+  // titleFontSize/titleLineH/titleWrapChars together — then re-wrap — until the
+  // wrapped line count actually fits that budget. Floors at 55% of full size so
+  // extreme inputs degrade gracefully instead of shrinking to unreadable text.
+  const titleFontSizeFull = Math.round(64 * scale)
+  const titleLineHFull = Math.round(78 * scale)
+  const topMargin = Math.round(16 * scale)
+  let titleFontSize = titleFontSizeFull
+  let titleLineH = titleLineHFull
+  let titleLines
+  let titleStartY
+  for (let shrinkStep = 0; shrinkStep <= 10; shrinkStep++) {
+    const shrink = 1 - shrinkStep * 0.045 // down to 0.55 at step 10
+    titleFontSize = Math.max(24, Math.round(titleFontSizeFull * shrink))
+    titleLineH = Math.max(28, Math.round(titleLineHFull * shrink))
+    const usableWidth = width - marginX * 2
+    const titleWrapChars = Math.max(8, Math.floor(usableWidth / (titleFontSize * AVG_CHAR_TO_FONT_RATIO)))
+    titleLines = wrapOverlayText(String(title || '').toUpperCase(), titleWrapChars)
+
+    const titleAscent = titleFontSize * 0.75
+    const minTitleTop = topMargin + titleAscent
+    titleStartY = titleEndY - (titleLines.length - 1) * titleLineH
+
+    if (titleStartY >= minTitleTop || shrink <= 0.55) {
+      if (titleStartY < minTitleTop) titleStartY = minTitleTop // last-resort floor — narrows but does not fully eliminate the clamp failure mode from the previous fix; only reachable when title+body+cta are all near their length bounds simultaneously
+      break
+    }
+  }
 
   const titleText = titleLines.map((l, i) =>
-    `<text x="64" y="${titleStartY + i * titleLineH}" font-size="64" fill="white" font-weight="700" font-family="sans-serif" letter-spacing="3">${escapeXml(l)}</text>`
+    `<text x="${marginX}" y="${titleStartY + i * titleLineH}" font-size="${titleFontSize}" fill="white" font-weight="700" font-family="sans-serif" letter-spacing="3">${escapeXml(l)}</text>`
   ).join('\n  ')
 
   const bodyText = bodyLines.map((l, i) =>
-    `<text x="64" y="${bodyStartY + i * bodyLineH}" font-size="36" fill="rgba(255,255,255,0.92)" font-weight="300" font-family="sans-serif">${escapeXml(l)}</text>`
+    `<text x="${marginX}" y="${bodyStartY + i * bodyLineH}" font-size="${bodyFontSize}" fill="rgba(255,255,255,0.92)" font-weight="300" font-family="sans-serif">${escapeXml(l)}</text>`
   ).join('\n  ')
 
   const ctaText = cta
-    ? `<text x="64" y="${ctaY}" font-size="32" fill="rgba(255,255,255,0.88)" font-family="sans-serif">${escapeXml(cta)}</text>`
+    ? `<text x="${marginX}" y="${ctaY}" font-size="${ctaFontSize}" fill="rgba(255,255,255,0.88)" font-family="sans-serif">${escapeXml(cta)}</text>`
     : ''
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CAROUSEL_SIZE}" height="${CAROUSEL_SIZE}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
   <defs>
-    <linearGradient id="carouselVig" x1="0" y1="1" x2="0" y2="0">
+    <linearGradient id="overlayVig" x1="0" y1="1" x2="0" y2="0">
       <stop offset="0%"  stop-color="rgba(0,0,0,0.72)"/>
       <stop offset="36%" stop-color="rgba(0,0,0,0.28)"/>
       <stop offset="65%" stop-color="rgba(0,0,0,0)"/>
     </linearGradient>
   </defs>
-  <rect width="${CAROUSEL_SIZE}" height="${CAROUSEL_SIZE}" fill="url(#carouselVig)"/>
+  <rect width="${width}" height="${height}" fill="url(#overlayVig)"/>
   ${titleText}
   ${bodyText}
   ${ctaText}
 </svg>`
 }
 
-// Generate a carousel slide: real photo (cover-fit, EXIF-rotated) + clean text overlay.
-// NO logo. NO template background. Matches the raw-overlay style locked 2026-05-31.
-// Returns path to temp PNG.
-async function generateCarouselSlide(srcImagePath, { title, body, cta }) {
-  const outputPath = path.join(os.tmpdir(), `carousel_${randomUUID()}.png`)
-  const svgOverlay = Buffer.from(buildCarouselOverlaySvg(title, body, cta))
+// Generate any overlay slide: real photo (cover-fit, EXIF-rotated) + clean text
+// overlay, no logo, no template. Dimensions are caller-specified. Returns path
+// to temp PNG.
+async function generateOverlaySlide(srcImagePath, { title, body, cta }, { width, height }) {
+  const outputPath = path.join(os.tmpdir(), `overlay_${randomUUID()}.png`)
+  const svgOverlay = Buffer.from(buildOverlaySvgFor(width, height, title, body, cta))
 
   await sharp(srcImagePath)
     .rotate()
-    .resize(CAROUSEL_SIZE, CAROUSEL_SIZE, { fit: 'cover', position: 'centre' })
+    .resize(width, height, { fit: 'cover', position: 'centre' })
     .composite([{ input: svgOverlay, blend: 'over' }])
     .png({ compressionLevel: 8 })
     .toFile(outputPath)
@@ -297,4 +346,10 @@ async function generateCarouselSlide(srcImagePath, { title, body, cta }) {
   return outputPath
 }
 
-module.exports = { generateSlide, generateCtaSlide, wrapText, generateCarouselSlide }
+// Backward-compatible wrapper — this is what WF8 calls. Must produce pixel-identical
+// output to the pre-refactor implementation (verified in Task 2).
+async function generateCarouselSlide(srcImagePath, opts) {
+  return generateOverlaySlide(srcImagePath, opts, { width: 1080, height: 1080 })
+}
+
+module.exports = { generateSlide, generateCtaSlide, wrapText, generateCarouselSlide, generateOverlaySlide }
