@@ -4,3 +4,4 @@ node_modules/
 .worktrees/
 test-*-output.png
 svg-isolated-*
+bench/runs/
