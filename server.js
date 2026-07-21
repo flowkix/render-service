@@ -158,6 +158,12 @@ const MAX_LOGO_FETCH_BYTES = 8_000_000 // matches EV Engine v3's known 8MB inlin
 // Resolves the hostname ourselves and rejects private/reserved IPs BEFORE fetching,
 // then fetches with a size cap and no redirect-following (so a public-looking host
 // can't 302 us to an internal address after the DNS check passes).
+// Accepted residual risk: this re-resolves the hostname on the actual axios.get()
+// rather than pinning the checked IP, so a DNS-rebinding attacker with a very low
+// TTL could swap in a private address between the check and the fetch. Not pinned
+// because this is a low-value target (marketing microsite logo fetch, not a
+// security product) — if this ever needs closing, fetch by IP with a Host header
+// override instead of re-passing the hostname.
 async function fetchPublicUrlBuffer(urlString) {
   let parsed
   try {
