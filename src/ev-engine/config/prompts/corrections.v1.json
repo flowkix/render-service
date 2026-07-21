@@ -13,8 +13,8 @@
       "id": "faucets-preserved",
       "appliesTo": "branding",
       "active": true,
-      "failureMode": "Chrome faucet handles in front of the center disc get erased or blended away",
-      "note": "The three chrome faucet tap handles are physical 3D objects mounted IN FRONT of the center disc. They must remain fully visible and unmodified, overlapping whatever is printed on the disc."
+      "failureMode": "Faucet taps in front of the center disc get erased, blended away, or repainted",
+      "note": "The three faucet taps (dark wood-grip handles on chrome faucet bodies, exactly as in IMAGE A) are physical 3D objects mounted IN FRONT of the center disc. All three must remain fully visible and unmodified — same materials, same colors, same positions — overlapping whatever is printed on the disc."
     },
     {
       "id": "logo-no-recolor",
@@ -49,14 +49,14 @@
       "appliesTo": "scene",
       "active": true,
       "failureMode": "Staff generated inside the EV or behind the service counter",
-      "note": "CORRECTION: all staff must be standing on the ground OUTSIDE the vehicle, never inside it, never behind the service counter, never framed within the service opening."
+      "note": "CORRECTION: all staff must be standing on the ground OUTSIDE the vehicle, never inside it, never behind the service counter, never framed within the service opening. The service window opening shows only the vehicle interior and equipment — no person inside it. The operator who serves the window stands on the ground BESIDE the window, outside the vehicle."
     },
     {
       "id": "interactions-mandatory",
       "appliesTo": "scene",
       "active": true,
       "failureMode": "Mandatory flyer / beverage+pastry interactions missing",
-      "note": "Both mandatory interactions must be clearly visible: (1) one guest receiving a printed flyer, (2) one guest at the service window receiving a beverage cup AND a pastry from the operator standing outside."
+      "note": "Both mandatory interactions must be captured MID-HAND-OFF, clearly visible: (1) one staff member and one guest BOTH holding the same printed flyer at the moment of transfer — the guest's hand visibly grasping it, not staff merely holding flyers; (2) one guest at the service window receiving a beverage cup AND a pastry handed over by the operator, who stands on the ground outside beside the window — both operator and guest visible in frame."
     },
     {
       "id": "balloon-colors-exact",

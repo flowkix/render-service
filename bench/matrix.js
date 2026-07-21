@@ -7,7 +7,7 @@ const fixtures = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'lo
 const ZONE_SETS = {
   all: 'all',
   center_only: ['center_disc'],
-  doors_band: ['left_door_interior', 'right_door_interior', 'lower_band'],
+  doors_band: ['left_door_interior', 'right_door_interior', 'header_band'],
 }
 
 const BRANDING_CANDIDATES = [

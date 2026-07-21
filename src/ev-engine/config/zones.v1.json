@@ -17,7 +17,7 @@
       "label": "Center disc behind faucets",
       "renderMode": "logo",
       "hardConstraints": ["faucets_preserved", "no_leftover_snacket"],
-      "fragment": "Large circular white disc on the service-bay side wall, above the metal tray. Three chrome faucet tap handles are 3D objects physically mounted IN FRONT of this disc, protruding toward the camera. Replace ONLY the printed SNACKET logo on the disc surface with the IMAGE B logo. All three faucet handles MUST remain fully visible overlapping the disc. Remove every trace of SNACKET lettering from the disc — never blend old and new marks."
+      "fragment": "Large circular white disc on the service-bay side wall, above the metal tray. Three faucet taps (dark wood-grip handles on chrome faucet bodies) are 3D objects physically mounted IN FRONT of this disc, protruding toward the camera. Replace ONLY the printed SNACKET logo on the disc surface with the IMAGE B logo. All three faucet handles MUST remain fully visible overlapping the disc. Remove every trace of SNACKET lettering from the disc — never blend old and new marks."
     },
     "mini_qr_logo": {
       "label": "Miniature logo near the QR panel",
@@ -34,10 +34,10 @@
       "renderMode": "logo",
       "fragment": "On the side panel of the driver cab, near the rear wheel, there is a small round SNACKET logo. Replace it with the IMAGE B logo at the same size and position, respecting the cab surface and lighting."
     },
-    "lower_band": {
-      "label": "Lower decorative band (icon strip)",
+    "header_band": {
+      "label": "Header band above the center disc (icon strip)",
       "renderMode": "name_text",
-      "fragment": "A narrow horizontal decorative band runs along the body with an alternating pattern of small SNACKET marks and gear/coffee icons. Replace every SNACKET mark in this band with the text \"{{companyName}}\" repeated evenly in the band's existing style, keeping the alternating gear/icon pattern. Do NOT attempt to render the full IMAGE B logo at this miniature scale — text only."
+      "fragment": "A narrow horizontal band runs directly below the door-hinge line, spanning the full width of the service-bay wall, ABOVE the center disc — do NOT place it near the wheels, the bottom skirt, or any other lower part of the vehicle. In IMAGE A this band shows an alternating pattern of small SNACKET marks and gear/coffee icons; in the rebrand, paint the ENTIRE strip solid in one of {{companyName}}'s logo colors, completely covering and replacing the gear/coffee icon pattern — do not preserve it. Then repeat the text \"{{companyName}}\" in small contrasting-color text evenly across the solid strip, roughly 5-7 times end to end — go left to right and check each repeat individually, none may be skipped or left blank. Do NOT attempt to render the full IMAGE B logo at this miniature scale — text only."
     }
   }
 }

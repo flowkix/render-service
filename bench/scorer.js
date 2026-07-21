@@ -4,7 +4,27 @@
 const path = require('path')
 const fs = require('fs')
 const axios = require('axios')
+const sharp = require('sharp')
 const { fetchBuffer, sniffMime } = require('../src/ev-engine/assets')
+
+// VLM scorers systematically miscount the three tap handles at full-image scale
+// (validated 2026-07-20: two rubric rewordings failed; a native-res crop shows all
+// three taps present while the scorer reports "center tap missing"). For branding
+// cases we hand the scorer a zoomed crop of the tap cluster as an extra image.
+const TAP_REGION = { left: 0.30, top: 0.32, width: 0.35, height: 0.38 }
+
+async function cropTapRegion(imageBuffer) {
+  const meta = await sharp(imageBuffer).metadata()
+  return sharp(imageBuffer)
+    .extract({
+      left: Math.round(meta.width * TAP_REGION.left),
+      top: Math.round(meta.height * TAP_REGION.top),
+      width: Math.round(meta.width * TAP_REGION.width),
+      height: Math.round(meta.height * TAP_REGION.height),
+    })
+    .png()
+    .toBuffer()
+}
 
 const HARD_GATES = {
   branding: ['ev_fidelity', 'faucets_present'],
@@ -15,7 +35,7 @@ function rubricFor(record) {
   if (record.stage === 'branding') {
     const checks = [
       { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the reference EV (IMAGE 3): same micro-truck body, flat roof, raised gull-wing doors, wheels, cab — not a different vehicle?' },
-      { id: 'faucets_present', q: 'Are the three chrome faucet tap handles clearly visible in front of the center disc?' },
+      { id: 'faucets_present', q: 'Use IMAGE 4 (zoomed crop of the tap area of IMAGE 1) for this check. In IMAGE 3 exactly three faucet taps (dark wood-grip handles on chrome faucet bodies) are mounted in front of the center disc. Are all three taps present in IMAGE 4? A handle may overlap the disc artwork behind it — inspect each position before declaring one missing. Judge handle material against IMAGE 3, not against an idealized chrome tap.' },
       { id: 'logo_present', q: 'Does the client logo (IMAGE 2) appear on the EV in the rebranded zones?' },
       { id: 'logo_legible', q: 'Is the client logo crisp and legible everywhere it appears (not a smudge or distorted)?' },
       { id: 'logo_colors_unaltered', q: 'Are the client logo colors faithful to IMAGE 2 (no recoloring or reinterpretation)?' },
@@ -31,7 +51,7 @@ function rubricFor(record) {
     { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
     { id: 'staff_outside_ev', q: 'Are ALL staff members standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind the counter, or framed within the service opening)?' },
     { id: 'flyer_interaction', q: 'Is at least one guest receiving a printed flyer from a staff member?' },
-    { id: 'beverage_pastry_interaction', q: 'Is at least one guest at the service window receiving a beverage cup and a pastry from the operator?' },
+    { id: 'beverage_pastry_interaction', q: 'Is at least one guest at the service window receiving a beverage cup and a pastry from an operator who is standing on the ground outside the vehicle (beside the window — an operator inside the window does NOT satisfy this check)?' },
     { id: 'balloon_arch_present', q: 'Is there a balloon arch over or near the EV?' },
     { id: 'balloon_colors_match_logo', q: 'Do the balloon arch colors match the client logo colors (IMAGE 2)?' },
     { id: 'no_watermarks', q: 'Is the image free of text overlays, borders and watermarks?' },
@@ -52,9 +72,11 @@ function rubricFor(record) {
 
 async function scoreImage({ apiKey, model, imageBuffer, logoBuffer, refBuffer, record }) {
   const checks = rubricFor(record)
+  const isBranding = record.stage === 'branding'
   const prompt = [
     `You are a strict visual QA inspector for AI-generated brand-activation imagery.`,
-    `IMAGE 1 = the generated image under review. IMAGE 2 = the client logo (ground truth). IMAGE 3 = the reference vehicle (ground truth).`,
+    `IMAGE 1 = the generated image under review. IMAGE 2 = the client logo (ground truth). IMAGE 3 = the reference vehicle (ground truth).` +
+      (isBranding ? ` IMAGE 4 = a zoomed crop of the faucet-tap area of IMAGE 1 (use it for the "faucets_present" check).` : ''),
     `Answer every check strictly. When uncertain, answer pass=false and explain.`,
     ``,
     `CHECKS:`,
@@ -71,6 +93,10 @@ async function scoreImage({ apiKey, model, imageBuffer, logoBuffer, refBuffer, r
     { inlineData: { mimeType: sniffMime(logoBuffer), data: logoBuffer.toString('base64') } },
     { inlineData: { mimeType: sniffMime(refBuffer), data: refBuffer.toString('base64') } },
   ]
+  if (isBranding) {
+    const tapCrop = await cropTapRegion(imageBuffer)
+    parts.push({ inlineData: { mimeType: 'image/png', data: tapCrop.toString('base64') } })
+  }
 
   const models = [model.primary, ...model.fallbacks]
   let resp = null
