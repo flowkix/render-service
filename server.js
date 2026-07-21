@@ -11,6 +11,9 @@ const { generateEvScene } = require('./src/ev-scene')
 const { generateDeckPdf } = require('./src/deck-pdf')
 const { generateCarouselSlide, generateOverlaySlide } = require('./src/slide-gen')
 const { uploadImage } = require('./src/supabase')
+const { runBranding } = require('./src/ev-engine')
+const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
+const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -105,6 +108,90 @@ app.post('/generate-ev-scene', async (req, res) => {
   } catch (err) {
     console.error(`[ev-scene] FAILED — ${prospect_id}:`, err.message)
     res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// Public, unauthenticated — protected by contact-gate + rate limiting instead of auth.
+// Branding-stage-only by design (2026-07-21 decision): no scene/staff generation here,
+// sidesteps the known scene-stage staff-guest interaction bug entirely. See
+// docs/lessons/failed-approaches.md "EV IMAGE ENGINE V3 — scene-stage staff/interaction prompt wording".
+app.post('/generate-ev-scene-public', async (req, res) => {
+  const { name, company, email, logo_source, honeypot } = req.body
+
+  if (honeypot && String(honeypot).trim() !== '') {
+    // Bot caught by the honeypot — respond as if successful, don't tip it off.
+    return res.json({ ok: true, image_url: null })
+  }
+  if (!name || !company || !email || !logo_source) {
+    return res.status(400).json({ ok: false, error: 'name, company, email, and logo_source are required' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ ok: false, error: 'invalid email' })
+  }
+
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown'
+
+  const leadId = randomUUID()
+  const snacketOs = getSnacketOsClient()
+
+  let ipHash
+  try {
+    ;({ ipHash } = checkRateLimit({ ip: clientIp, email }))
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  // Insert the lead row as 'pending' before generating, so a crash mid-generation
+  // still leaves an auditable record.
+  const { error: insertError } = await snacketOs.from('clt_alliance_leads').insert({
+    id: leadId,
+    contact_name: name,
+    contact_company: company,
+    contact_email: email,
+    logo_source_label: String(logo_source).slice(0, 200),
+    status: 'pending',
+    ip_hash: ipHash,
+    user_agent: req.headers['user-agent'] || null,
+  })
+  if (insertError) {
+    console.error(`[clt-alliance] lead insert FAILED — ${leadId}:`, insertError.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  try {
+    console.log(`[clt-alliance] start — ${leadId} / ${company}`)
+
+    let logoBuffer
+    if (/^data:/.test(logo_source)) {
+      const base64 = logo_source.split(',')[1]
+      if (!base64) throw new Error('malformed data URL')
+      logoBuffer = Buffer.from(base64, 'base64')
+    } else if (/^https?:\/\//i.test(logo_source)) {
+      logoBuffer = logo_source // runBranding's fetchBuffer handles http(s) URLs directly
+    } else {
+      throw new Error('logo_source must be a data: URL or an http(s) URL')
+    }
+
+    const { buffer } = await runBranding({
+      companyName: company,
+      logoSource: logoBuffer,
+      zones: 'all',
+    })
+
+    const imageUrl = await uploadCltAlliancePreview(buffer, leadId)
+
+    await snacketOs.from('clt_alliance_leads')
+      .update({ status: 'completed', ev_image_url: imageUrl })
+      .eq('id', leadId)
+
+    console.log(`[clt-alliance] done — ${leadId} / ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl, lead_id: leadId })
+  } catch (err) {
+    console.error(`[clt-alliance] FAILED — ${leadId}:`, err.message)
+    await snacketOs.from('clt_alliance_leads')
+      .update({ status: 'failed', error_message: err.message.slice(0, 2000) })
+      .eq('id', leadId)
+    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   }
 })
 
