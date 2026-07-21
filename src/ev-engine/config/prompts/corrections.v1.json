@@ -1,0 +1,99 @@
+{
+  "version": "v1",
+  "description": "Toggleable correction notes targeting known failure modes. Active notes are appended to the stage prompt as a CORRECTION NOTES section. Iteration lever: bench failure -> activate/adjust a note -> re-bench.",
+  "corrections": [
+    {
+      "id": "ev-no-drift",
+      "appliesTo": "branding",
+      "active": true,
+      "failureMode": "Model generates a different vehicle (generic white van) instead of the SNACKET EV",
+      "note": "The vehicle must be IDENTICAL to IMAGE A: same micro-truck body, same flat roof, same raised gull-wing doors, same wheels and cab. Do not generate any other vehicle type, size or door configuration."
+    },
+    {
+      "id": "faucets-preserved",
+      "appliesTo": "branding",
+      "active": true,
+      "failureMode": "Faucet taps in front of the center disc get erased, blended away, or repainted",
+      "note": "The three faucet taps (dark wood-grip handles on chrome faucet bodies, exactly as in IMAGE A) are physical 3D objects mounted IN FRONT of the center disc. All three must remain fully visible and unmodified — same materials, same colors, same positions — overlapping whatever is printed on the disc."
+    },
+    {
+      "id": "logo-no-recolor",
+      "appliesTo": "branding",
+      "active": true,
+      "failureMode": "Client logo gets recolored, simplified or redrawn",
+      "note": "Use the IMAGE B logo EXACTLY as provided: same colors, same proportions, same artwork. No color modifications, no stylistic reinterpretation, no added text."
+    },
+    {
+      "id": "no-leftover-snacket",
+      "appliesTo": "branding",
+      "active": true,
+      "failureMode": "Replaced zones show remnants of SNACKET lettering mixed with the client logo",
+      "note": "CRITICAL: every replaced zone must contain ZERO remnants of the word SNACKET or its icons. Fully remove the old mark before placing the new one — never blend old and new marks."
+    },
+    {
+      "id": "complex-logo-miniature",
+      "appliesTo": "branding",
+      "active": true,
+      "failureMode": "Complex logos become illegible smudges at miniature scale",
+      "note": "For small zones, if the IMAGE B logo has fine detail, render only its primary symbol or monogram at that scale so it stays crisp and legible."
+    },
+    {
+      "id": "background-neutral",
+      "appliesTo": "branding",
+      "active": true,
+      "failureMode": "Branding pass invents a background scene instead of keeping the studio background",
+      "note": "Keep the plain white studio background from IMAGE A. Do not add any scene, floor texture, people or environment — this image is a product shot of the branded EV only."
+    },
+    {
+      "id": "staff-outside-ev",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Staff generated inside the EV or behind the service counter",
+      "note": "CORRECTION: all staff must be standing on the ground OUTSIDE the vehicle, never inside it, never behind the service counter, never framed within the service opening. The service window opening shows only the vehicle interior and equipment — no person inside it. The operator who serves the window stands on the ground BESIDE the window, outside the vehicle."
+    },
+    {
+      "id": "interactions-mandatory",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Mandatory flyer / beverage+pastry interactions missing",
+      "note": "Both mandatory interactions must be captured MID-HAND-OFF, clearly visible: (1) one staff member and one guest BOTH holding the same printed flyer at the moment of transfer — the guest's hand visibly grasping it, not staff merely holding flyers; (2) one guest at the service window receiving a beverage cup AND a pastry handed over by the operator, who stands on the ground outside beside the window — both operator and guest visible in frame."
+    },
+    {
+      "id": "balloon-colors-exact",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Balloon arch colors do not match the client logo colors",
+      "note": "CORRECTION: balloon arch colors must EXACTLY match the client logo colors in IMAGE B — no interpretation, exact color match."
+    },
+    {
+      "id": "chauvet-visible",
+      "appliesTo": "scene",
+      "active": true,
+      "presets": ["P2", "P3"],
+      "failureMode": "Chauvet Par H9 fixtures not visible or not projecting onto the backdrop",
+      "note": "CORRECTION: the 4 Chauvet Par H9 IP fixtures must be clearly visible on the floor, housings identifiable, with colored light visibly projecting onto the backdrop."
+    },
+    {
+      "id": "stool-spec",
+      "appliesTo": "scene",
+      "active": true,
+      "presets": ["P3"],
+      "failureMode": "VIP bar stools rendered with wrong style",
+      "note": "CORRECTION: bar stools must be white tufted leather with chrome pedestal base and chrome ring footrest — tall bar height, square tufted seat cushion."
+    },
+    {
+      "id": "ev-branding-final",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Scene pass re-touches or corrupts the EV branding done in stage 1",
+      "note": "The EV branding in IMAGE A is FINAL. Do not repaint, move, add or remove any logo on the vehicle. Reproduce the vehicle pixel-faithful including all its current branding."
+    },
+    {
+      "id": "no-watermarks",
+      "appliesTo": "both",
+      "active": true,
+      "failureMode": "Output contains text overlays, borders or watermarks",
+      "note": "No text overlays, no borders, no watermarks, no captions anywhere in the output image."
+    }
+  ]
+}

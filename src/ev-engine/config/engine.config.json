@@ -1,0 +1,37 @@
+{
+  "configVersion": "v1",
+  "zonesVersion": "zones.v1.json",
+  "promptsVersion": "prompts/presets.v1.json",
+  "correctionsVersion": "prompts/corrections.v1.json",
+  "stages": {
+    "branding": {
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "resolution": "2K",
+      "aspectRatio": "4:3",
+      "challengers": [
+        { "provider": "gemini", "model": "gemini-3.1-flash-image" },
+        { "provider": "fal-kontext", "model": "flux-pro/kontext/max" }
+      ]
+    },
+    "scene": {
+      "provider": "gemini",
+      "model": "gemini-3-pro-image",
+      "resolution": "2K",
+      "aspectRatio": "16:9",
+      "challengers": [
+        { "provider": "gemini", "model": "gemini-3.1-flash-image" }
+      ]
+    }
+  },
+  "scorer": {
+    "provider": "gemini",
+    "model": "gemini-3-flash-preview",
+    "fallbackModels": ["gemini-2.5-flash", "gemini-3.5-flash"]
+  },
+  "limits": {
+    "maxInlinePayloadBytes": 8000000,
+    "costCapPerImageUsd": 0.25,
+    "timeoutMs": 180000
+  }
+}

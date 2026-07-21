@@ -1,0 +1,43 @@
+{
+  "version": "v1",
+  "referenceImage": "https://nrawezmnyivbmatrugdv.supabase.co/storage/v1/object/public/snacket-assets/brand/ev-reference/snacket-ev-referencia.jpg",
+  "referenceDescription": "SNACKET NitroCafé EV on a white background, 1024x768, rear 3/4 view slightly elevated, both gull-wing doors raised open",
+  "zones": {
+    "left_door_interior": {
+      "label": "Left gull-wing door interior panel",
+      "renderMode": "logo",
+      "fragment": "The smaller LEFT gull-wing door is raised open; its flat underside panel (pointing downward) shows a circular SNACKET logo on light wood texture. Replace that logo with the IMAGE B logo, large and centered on the panel, following the panel's tilt and perspective. Keep the wood texture and door hardware intact."
+    },
+    "rear_interior_panel": {
+      "label": "Rear interior panel (back of service module)",
+      "renderMode": "logo",
+      "fragment": "Looking through the rear opening, a smaller circular SNACKET logo sits on a vertical interior panel in the back. Replace it with the IMAGE B logo, respecting the interior depth, scale and dimmer lighting."
+    },
+    "center_disc": {
+      "label": "Center disc behind faucets",
+      "renderMode": "logo",
+      "hardConstraints": ["faucets_preserved", "no_leftover_snacket"],
+      "fragment": "Large circular white disc on the service-bay side wall, above the metal tray. Three faucet taps (dark wood-grip handles on chrome faucet bodies) are 3D objects physically mounted IN FRONT of this disc, protruding toward the camera. Replace ONLY the printed SNACKET logo on the disc surface with the IMAGE B logo. All three faucet handles MUST remain fully visible overlapping the disc. Remove every trace of SNACKET lettering from the disc — never blend old and new marks."
+    },
+    "mini_qr_logo": {
+      "label": "Miniature logo near the QR panel",
+      "renderMode": "logo",
+      "fragment": "Just right of the large center disc, near the QR-code panel and the coffee machine, there is a miniature version of the SNACKET logo. Replace it with a miniature of the IMAGE B logo. If the logo has fine detail, use only its primary symbol or monogram so it stays legible at this small size."
+    },
+    "right_door_interior": {
+      "label": "Right gull-wing door interior panel",
+      "renderMode": "logo",
+      "fragment": "The larger RIGHT gull-wing door is raised open; its flat underside panel shows a circular SNACKET logo on light wood texture. Replace it with the IMAGE B logo, large and centered, following the panel's tilt and perspective. Keep wood texture, hinges and gas struts intact."
+    },
+    "driver_cab_panel": {
+      "label": "Driver-cab side panel",
+      "renderMode": "logo",
+      "fragment": "On the side panel of the driver cab, near the rear wheel, there is a small round SNACKET logo. Replace it with the IMAGE B logo at the same size and position, respecting the cab surface and lighting."
+    },
+    "header_band": {
+      "label": "Header band above the center disc (icon strip)",
+      "renderMode": "name_text",
+      "fragment": "A narrow horizontal band runs directly below the door-hinge line, spanning the full width of the service-bay wall, ABOVE the center disc — do NOT place it near the wheels, the bottom skirt, or any other lower part of the vehicle. In IMAGE A this band shows an alternating pattern of small SNACKET marks and gear/coffee icons; in the rebrand, paint the ENTIRE strip solid in one of {{companyName}}'s logo colors, completely covering and replacing the gear/coffee icon pattern — do not preserve it. Then repeat the text \"{{companyName}}\" in small contrasting-color text evenly across the solid strip, roughly 5-7 times end to end — go left to right and check each repeat individually, none may be skipped or left blank. Do NOT attempt to render the full IMAGE B logo at this miniature scale — text only."
+    }
+  }
+}

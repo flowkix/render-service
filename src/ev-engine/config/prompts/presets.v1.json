@@ -1,0 +1,117 @@
+{
+  "version": "v1",
+  "source": "Ported from SNACKET/docs/prompt-system/snacket_prompts.json (v1.0) — adapted to the two-stage engine: scene templates receive an already-branded EV as IMAGE A and never re-instruct logo replacement on the EV.",
+  "global_rules_text": "CRITICAL — EV IDENTITY PRESERVATION: IMAGE A shows the SNACKET NitroCafé EV already branded for {{companyName}}. Reproduce this exact vehicle with 100% structural fidelity: same shape, proportions, color, wheels, driver cab, body panels, raised open gull-wing doors, three chrome faucets, metal tray, coffee machine, QR panel and all hardware. Do NOT generate a different vehicle. Do NOT alter, add, move or remove any logo or branding already present on the EV in IMAGE A — the EV branding is final.\nCRITICAL — NO LABEL TEXT: \"IMAGE A\" and \"IMAGE B\" are internal reference labels for this prompt only. NEVER render the literal words \"IMAGE A\" or \"IMAGE B\" as text anywhere in the output — not on the backdrop, not on signage, not anywhere. Wherever the client logo is displayed (backdrop, balloons, cups, flyers), render the actual logo artwork graphic, never the words describing it.\nCRITICAL — STAFF POSITIONING: every staff member (EV Operator, Brand Ambassador) stands OUTSIDE the EV, on the ground, in front of the unit. Never inside the EV, never behind the service counter, never framed within the service opening.\nMANDATORY INTERACTIONS (always present regardless of crowd size): at least 1 guest receiving a printed flyer from the Brand Ambassador (or from the EV Operator if no Brand Ambassador is present), with natural eye contact and a warm smile; at least 1 guest at the service window receiving a branded beverage cup AND a pastry handed directly by the EV Operator standing outside in front of the window.\nBALLOON ARCH: the balloon arch colors must EXACTLY match the colors of the client's logo artwork — no interpretation, exact color match.",
+  "presets": {
+    "P1": {
+      "name": "EV Casual",
+      "description": "Daytime casual brand activation. Single EV Operator, no Brand Ambassador by default, urban or corporate setting.",
+      "defaults": {
+        "uniform": "brand_casual",
+        "operator_gender": "male",
+        "brand_ambassador": "none",
+        "scene": "urban_plaza_corporate",
+        "lighting": "midday_sunlight",
+        "photo_style": "commercial_hyperrealistic",
+        "aspect_ratio": "16:9"
+      },
+      "crowd_size": "10-15 attendees in business casual attire",
+      "composition": "EV centered. Operator outside in front of the service window (foreground-right). Guest receiving flyer (foreground-left). Guest receiving beverage + pastry at the window. Crowd fills mid and background naturally.",
+      "template": "SNACKET NitroCafé EV brand activation scene — EV CASUAL.\n\nIMAGE A = the branded {{companyName}} EV (final, do not modify). IMAGE B = the {{companyName}} logo, used ONLY as color/artwork reference for balloons, backdrop, cups and printed materials.\n\n{{GLOBAL_RULES}}\n\nSCENE: {{scene}}. LIGHTING: {{lighting}}.\n\nEV UNIT: reproduce IMAGE A exactly — same camera angle (rear 3/4 view, slightly elevated), same open gull-wing doors, same branding.\n\nTEAM:\n- EV OPERATOR ({{operator_gender}}): wearing {{uniform}}. Standing OUTSIDE the EV, on the ground, in front of the service window. Handing a branded beverage cup AND a pastry to a guest at the window.\n{{brand_ambassador_block}}\n\nACTIVATION ELEMENTS:\n- Balloon arch over the EV in colors exactly matching the client's logo artwork.\n\nCROWD: {{crowd_size}} scattered naturally — chatting, looking toward the EV, walking by.\n\nCOMPOSITION: {{composition}}\n\nPHOTOGRAPHY: {{photo_style}}, 8K, photorealistic depth of field, f/5.6, 35mm lens.\n\n{{notes_block}}"
+    },
+    "P2": {
+      "name": "EV Red Carpet + Backdrop",
+      "description": "Upscale dusk activation with red carpet, step-and-repeat backdrop, professional photographer, and Chauvet Par H9 LED lights. No VIP furniture area.",
+      "defaults": {
+        "uniform": "formal_chic",
+        "operator_gender": "male",
+        "brand_ambassador": "female",
+        "scene": "hotel_ballroom",
+        "lighting": "dusk_twilight",
+        "photo_style": "commercial_hyperrealistic",
+        "aspect_ratio": "16:9"
+      },
+      "crowd_size": "15-20 attendees in cocktail / business formal attire",
+      "composition": "EV anchors the left side. Backdrop and red carpet in mid-background. Photographer to the side. Wide establishing shot with cinematic depth of field.",
+      "photographer_detail": "Professional photographer (male, all in black, holding a DSLR with telephoto lens) standing to the side, shooting 3-4 elegantly dressed guests posing together in front of the step-and-repeat. Additional guests nearby holding up phones to photograph the posing group.",
+      "chauvet_lighting_detail": "4x Chauvet DJ Freedom Par H9 IP LED fixtures placed on the floor in front of the red carpet, facing upward toward the backdrop, projecting vivid colored wash lighting onto the backdrop surface. Fixtures clearly identifiable with their housing visible.",
+      "template": "SNACKET NitroCafé EV brand activation scene — RED CARPET + BACKDROP.\n\nIMAGE A = the branded {{companyName}} EV (final, do not modify). IMAGE B = the {{companyName}} logo, used ONLY as color/artwork reference for balloons, backdrop, cups and printed materials.\n\n{{GLOBAL_RULES}}\n\nSCENE: {{scene}}. LIGHTING: {{lighting}}.\n\nEV UNIT: reproduce IMAGE A exactly — same camera angle (rear 3/4 view, slightly elevated), same open gull-wing doors, same branding.\n\nTEAM:\n- EV OPERATOR ({{operator_gender}}): wearing {{uniform}}. Standing OUTSIDE the EV, on the ground, in front of the service window. Handing a branded beverage cup AND a pastry to a guest at the window.\n{{brand_ambassador_block}}\n\nACTIVATION ELEMENTS:\n- Balloon arch over the EV in colors exactly matching the client's logo artwork.\n- Large printed backdrop / step-and-repeat panel behind the activation area, entirely covered by the client's logo artwork graphic repeated prominently (repeat the graphic, never any text label).\n- Red carpet rolled out in front of the backdrop.\n- {{photographer_detail}}\n- {{chauvet_lighting_detail}}\n\nCROWD: {{crowd_size}} — at the backdrop, approaching the EV, conversing in the background.\n\nCOMPOSITION: {{composition}}\n\nPHOTOGRAPHY: {{photo_style}}, 8K, photorealistic depth of field, dusk ambient + LED lighting.\n\n{{notes_block}}"
+    },
+    "P3": {
+      "name": "EV VIP",
+      "description": "Premium VIP activation combining red carpet, backdrop, Chauvet LED lights, and a VIP lounge area (3 cocktail tables + 6 white bar stools) immediately beside the EV.",
+      "defaults": {
+        "uniform": "formal_chic",
+        "operator_gender": "male",
+        "brand_ambassador": "female",
+        "scene": "hotel_ballroom",
+        "lighting": "dusk_twilight",
+        "photo_style": "commercial_hyperrealistic",
+        "aspect_ratio": "16:9"
+      },
+      "crowd_size": "15-20 attendees in cocktail / formal attire",
+      "composition": "EV anchors one side. VIP lounge area flows beside it as one unified premium space. Backdrop and red carpet in mid-background. Wide cinematic establishing shot.",
+      "photographer_detail": "Professional photographer (male, all in black, holding a DSLR with telephoto lens) standing to the side, shooting 3-4 elegantly dressed guests posing together in front of the step-and-repeat. Additional guests nearby holding up phones to photograph the posing group.",
+      "chauvet_lighting_detail": "4x Chauvet DJ Freedom Par H9 IP LED fixtures placed on the floor in front of the red carpet, facing upward toward the backdrop, projecting vivid colored wash lighting onto the backdrop surface. Fixtures clearly identifiable with their housing visible.",
+      "vip_area_detail": "VIP lounge area immediately beside the EV forming one cohesive branded space: 3 tall cocktail tables with white stretch spandex covers. 2 white tufted leather bar stools with chrome base at each table (6 stools total). Stool spec: square-tufted padded seat cushion, chrome ring footrest, single chrome pedestal base. Guests seated and standing at the tables in elegant attire, drinks in hand, conversing warmly.",
+      "template": "SNACKET NitroCafé EV brand activation scene — EV VIP.\n\nIMAGE A = the branded {{companyName}} EV (final, do not modify). IMAGE B = the {{companyName}} logo, used ONLY as color/artwork reference for balloons, backdrop, cups and printed materials.\n\n{{GLOBAL_RULES}}\n\nSCENE: {{scene}}. LIGHTING: {{lighting}}.\n\nEV UNIT: reproduce IMAGE A exactly — same camera angle (rear 3/4 view, slightly elevated), same open gull-wing doors, same branding.\n\nTEAM:\n- EV OPERATOR ({{operator_gender}}): wearing {{uniform}}. Standing OUTSIDE the EV, on the ground, in front of the service window. Handing a branded beverage cup AND a pastry to a guest at the window.\n{{brand_ambassador_block}}\n\nACTIVATION ELEMENTS:\n- Balloon arch over the EV in colors exactly matching the client's logo artwork.\n- Large printed backdrop / step-and-repeat panel, entirely covered by the client's logo artwork graphic repeated prominently (repeat the graphic, never any text label).\n- Red carpet rolled out in front of the backdrop.\n- {{photographer_detail}}\n- {{chauvet_lighting_detail}}\n- {{vip_area_detail}}\n\nCROWD: {{crowd_size}} — at VIP tables, near the backdrop, approaching the EV.\n\nCOMPOSITION: {{composition}}\n\nPHOTOGRAPHY: {{photo_style}}, 8K, photorealistic depth of field, dusk ambient + LED lighting.\n\n{{notes_block}}"
+    }
+  },
+  "param_options": {
+    "uniform": {
+      "brand_casual": "brand casual: fitted branded polo shirt, clean chinos, white sneakers",
+      "formal_chic": "formal chic: tailored blazer, dress shirt or blouse, slim trousers or pencil skirt, dress shoes",
+      "sporty": "sporty: performance zip-up jacket, jogger pants, athletic sneakers",
+      "all_black": "all-black slim uniform: fitted black turtleneck, tailored black trousers, black leather sneakers"
+    },
+    "brand_ambassador": {
+      "none": "",
+      "female": "- BRAND AMBASSADOR (female, elegant woman, late 20s): wearing {{uniform}}. Standing OUTSIDE the EV on the ground. Handing a printed flyer to a nearby guest with warm eye contact and a confident smile.",
+      "male": "- BRAND AMBASSADOR (male, charismatic man, late 20s): wearing {{uniform}}. Standing OUTSIDE the EV on the ground. Handing a printed flyer to a nearby guest with warm eye contact and a confident smile."
+    },
+    "operator_gender": {
+      "male": "male",
+      "female": "female",
+      "both": "male and female (two operators: male handles beverage + pastry at the service window, female handles flyer distribution)"
+    },
+    "lighting": {
+      "midday_sunlight": "bright natural midday sunlight, warm tones, sharp natural shadows, clear blue sky",
+      "golden_hour": "golden hour late afternoon, warm cinematic sunlight, long soft shadows, amber glow",
+      "dusk_twilight": "dusk twilight — sky transitioning from orange-amber to deep blue, not fully dark, LED event lights visibly glowing, atmospheric",
+      "overcast": "overcast soft diffused natural light, even shadows, clean professional look"
+    },
+    "photo_style": {
+      "commercial_hyperrealistic": "ultra-realistic commercial photography",
+      "cinematic_wideangle": "cinematic wide-angle shot, dramatic lighting",
+      "editorial_lifestyle": "editorial lifestyle photography, warm moody tones",
+      "drone_aerial": "drone aerial perspective, bird's eye view",
+      "highend_event": "high-end event photography, sharp foreground, cinematic bokeh background"
+    },
+    "scene": {
+      "urban_plaza_corporate": "modern urban plaza surrounded by glass office towers, midday sun, city workers in business casual attire",
+      "corporate_campus": "outdoor corporate campus courtyard, manicured trees, modern buildings, employees with lanyards",
+      "mall_open_air": "upscale open-air lifestyle plaza, bright afternoon, shoppers and families",
+      "festival": "outdoor festival grounds, crowd, golden hour lighting, colorful flags and tents",
+      "rooftop_dusk": "rooftop terrace at dusk, city skyline in background, cocktail attire guests, elegant warm ambient lighting",
+      "residential": "residential apartment complex courtyard, sunny afternoon, pool area nearby, casual residents",
+      "tailgate": "parking lot tailgate, sports pre-game event, team colors, excited fans, high energy",
+      "graduation": "outdoor graduation ceremony lawn, families in festive attire, warm sunny day",
+      "outdoor_upscale_venue_dusk": "upscale outdoor event venue at dusk, open-air plaza, warm ambient lighting, city background, premium event atmosphere",
+      "hotel_ballroom": "elegant hotel ballroom or convention center lobby, marble floors, crystal chandeliers, formally dressed attendees",
+      "corporate_lobby": "modern corporate office lobby, floor-to-ceiling windows, polished concrete floors, employees in business attire",
+      "convention_expo": "large indoor conference center exhibitor hall, branded booths, professional crowd, indoor event lighting",
+      "mall_atrium": "upscale indoor shopping mall atrium, natural light from skylights, shoppers on multiple levels",
+      "gallery_showroom": "chic gallery or showroom space, white walls, minimalist decor, intimate product launch crowd in cocktail attire",
+      "university": "modern university or community center common area, students and young professionals, natural light through large windows",
+      "auto_dealership": "luxury car dealership showroom, polished floors, premium vehicles on display, VIP client event, sophisticated warm lighting"
+    },
+    "aspect_ratio": {
+      "16:9": "16:9",
+      "1:1": "1:1",
+      "4:5": "4:5",
+      "9:16": "9:16",
+      "3:2": "3:2",
+      "21:9": "21:9"
+    }
+  }
+}
