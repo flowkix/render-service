@@ -7,6 +7,7 @@ const net = require('net')
 const dns = require('dns').promises
 const { randomUUID } = require('crypto')
 const axios = require('axios')
+const sharp = require('sharp')
 const { renderReel } = require('./src/render')
 const { getClient } = require('./src/supabase')
 const { downloadFile, extFromUrl } = require('./src/downloader')
@@ -307,7 +308,12 @@ app.post('/generate-ev-scene-public', async (req, res) => {
       zones: 'all',
     })
 
-    const imageUrl = await uploadCltAlliancePreview(buffer, leadId)
+    // Gemini's returned buffer isn't guaranteed to actually be PNG-encoded (it can come
+    // back as JPEG bytes) — normalize to real PNG before upload, matching ev-scene.js's
+    // established convention (sharp(...).png()) for this same engine's output.
+    const pngBuffer = await sharp(buffer).png().toBuffer()
+
+    const imageUrl = await uploadCltAlliancePreview(pngBuffer, leadId)
 
     await snacketOs.from('clt_alliance_leads')
       .update({ status: 'completed', ev_image_url: imageUrl })
