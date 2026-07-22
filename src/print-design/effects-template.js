@@ -1,3 +1,5 @@
+// Mirrors hub/scripts/print-design/templates/_shared/effects.css — keep in sync manually
+// (separate repos, no shared module boundary — see plan's "Repo boundary correction").
 function hexToRgb(hex) {
   const clean = hex.replace('#', '')
   const r = parseInt(clean.slice(0, 2), 16)
