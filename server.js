@@ -18,8 +18,17 @@ const { uploadImage } = require('./src/supabase')
 const { runBranding } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
+const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
 
 const app = express()
+// Exactly one trusted reverse proxy in front of this service (Railway's edge). Railway
+// appends the real observed client IP to the RIGHT side of any X-Forwarded-For chain it
+// forwards. Setting this to 1 makes Express (via proxy-addr) trust exactly one hop nearest
+// the server and derive req.ip from the entry at that boundary — i.e. Railway's own
+// appended value — while ignoring/stripping any attacker-injected entries further left in
+// the chain. Verified empirically: with trust proxy=1, a header of "1.2.3.4, 9.9.9.9"
+// (attacker-spoofed leftmost + Railway-appended rightmost) resolves req.ip to "9.9.9.9".
+app.set('trust proxy', 1)
 app.use(express.json({ limit: '1mb' }))
 
 let supabaseStatus = 'checking'
@@ -154,7 +163,29 @@ function isPrivateOrReservedIp(ip) {
   return true // unrecognized format — fail closed
 }
 
-const MAX_LOGO_FETCH_BYTES = 8_000_000 // matches EV Engine v3's known 8MB inline (base64) payload ceiling
+// ev-engine's assets.js enforces MAX_INLINE_PAYLOAD_BYTES (imported above, currently 8MB) as
+// a COMBINED base64-encoded ceiling across BOTH images sent to Gemini for this route: this
+// logo + the fixed EV reference photo (zones.v1.json's referenceImage — a static Supabase
+// asset, ~150KB raw / ~200KB base64 as of 2026-07). Base64 inflates raw bytes by ~4/3, so an
+// 8MB RAW logo (the old value here) already base64-encodes to ~10.9MB — bigger than the
+// entire 8MB combined ceiling before the reference image is even added. That let a near-cap
+// logo pass this fetch-size guard cleanly, then fail downstream inside the Gemini provider's
+// assertPayloadWithinLimit(), surfacing only as a generic "Generation failed" 500 (see the
+// catch block in /generate-ev-scene-public, which now also special-cases that specific error).
+//
+// Budget math (derived from the real ceiling, not a duplicated magic number, so it can't
+// drift if MAX_INLINE_PAYLOAD_BYTES ever changes):
+//   - Reserve 1,000,000 base64 bytes for the reference image — ~5x its actual ~200KB base64
+//     size today, covering that static asset being swapped for something larger later.
+//   - Remaining base64 budget for the logo: MAX_INLINE_PAYLOAD_BYTES - 1,000,000 = 7,000,000
+//   - Undo base64 inflation (x3/4) to get raw bytes: 7,000,000 * 3/4 = 5,250,000
+//   - Apply an extra 20% safety margin for rounding/config drift: 5,250,000 * 0.8 = 4,200,000
+// Worst case with this cap: a 4.2MB raw logo (~5.6MB base64) + ~200KB base64 reference =
+// ~5.8MB combined, ~73% of the real 8MB ceiling — comfortable headroom, not a razor's edge.
+const REFERENCE_IMAGE_BASE64_RESERVE_BYTES = 1_000_000
+const MAX_LOGO_FETCH_BYTES = Math.floor(
+  (MAX_INLINE_PAYLOAD_BYTES - REFERENCE_IMAGE_BASE64_RESERVE_BYTES) * (3 / 4) * 0.8
+)
 
 // Resolves the hostname ourselves and rejects private/reserved IPs BEFORE fetching,
 // then fetches with a size cap and no auto-redirect-following (so a public-looking
@@ -250,7 +281,10 @@ app.post('/generate-ev-scene-public', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'email must be 320 characters or fewer' })
   }
 
-  const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown'
+  // req.ip is proxy-aware once `trust proxy` is set (see app.set('trust proxy', 1) above) —
+  // it resolves through Railway's trusted hop rather than trusting the raw, spoofable
+  // leftmost X-Forwarded-For entry an attacker could inject.
+  const clientIp = req.ip || 'unknown'
 
   const leadId = randomUUID()
   let snacketOs
@@ -326,7 +360,15 @@ app.post('/generate-ev-scene-public', async (req, res) => {
     await snacketOs.from('clt_alliance_leads')
       .update({ status: 'failed', error_message: err.message.slice(0, 2000) })
       .eq('id', leadId)
-    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
+    // Defense-in-depth alongside the MAX_LOGO_FETCH_BYTES sizing above: if the combined
+    // base64 payload guard in assets.js's assertPayloadWithinLimit() still trips (e.g. the
+    // reference image config changes later), surface a specific, actionable message instead
+    // of the generic one below.
+    const isPayloadTooLarge = /base64 exceeds/.test(err.message)
+    const userError = isPayloadTooLarge
+      ? 'Your logo image is too large to process — please use a smaller file and try again.'
+      : 'Generation failed — our team has been notified.'
+    res.status(500).json({ ok: false, error: userError })
   }
 })
 
