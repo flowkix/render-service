@@ -156,15 +156,20 @@ function isPrivateOrReservedIp(ip) {
 const MAX_LOGO_FETCH_BYTES = 8_000_000 // matches EV Engine v3's known 8MB inline (base64) payload ceiling
 
 // Resolves the hostname ourselves and rejects private/reserved IPs BEFORE fetching,
-// then fetches with a size cap and no redirect-following (so a public-looking host
-// can't 302 us to an internal address after the DNS check passes).
+// then fetches with a size cap and no auto-redirect-following (so a public-looking
+// host can't 302 us to an internal address after the DNS check passes).
+// Redirects ARE followed, but manually (see the recursive call below) — each hop's
+// hostname goes back through the same DNS/private-IP check before being fetched,
+// so a redirect chain that lands on an internal address is still caught. This is
+// required in practice: e.g. Google's favicon service (used by the SNACKET website's
+// domain-auto-detect logo picker) issues a real 301 to a gstatic.com host.
 // Accepted residual risk: this re-resolves the hostname on the actual axios.get()
 // rather than pinning the checked IP, so a DNS-rebinding attacker with a very low
 // TTL could swap in a private address between the check and the fetch. Not pinned
 // because this is a low-value target (marketing microsite logo fetch, not a
 // security product) — if this ever needs closing, fetch by IP with a Host header
 // override instead of re-passing the hostname.
-async function fetchPublicUrlBuffer(urlString) {
+async function fetchPublicUrlBuffer(urlString, redirectsLeft = 5) {
   let parsed
   try {
     parsed = new URL(urlString)
@@ -190,8 +195,31 @@ async function fetchPublicUrlBuffer(urlString) {
     timeout: 15000,
     maxContentLength: MAX_LOGO_FETCH_BYTES,
     maxRedirects: 0,
+    validateStatus: s => (s >= 200 && s < 300) || (s >= 300 && s < 400),
   })
-  return Buffer.from(resp.data)
+
+  if (resp.status >= 200 && resp.status < 300) {
+    return Buffer.from(resp.data)
+  }
+
+  if (resp.status >= 300 && resp.status < 400) {
+    if (redirectsLeft <= 0) {
+      throw new Error('logo_source redirected too many times')
+    }
+    const location = resp.headers.location
+    if (!location) {
+      throw new Error('logo_source redirected without a Location header')
+    }
+    let nextUrl
+    try {
+      nextUrl = new URL(location, urlString).href
+    } catch (_) {
+      throw new Error('logo_source redirected to an invalid URL')
+    }
+    return fetchPublicUrlBuffer(nextUrl, redirectsLeft - 1)
+  }
+
+  throw new Error(`logo_source fetch failed with status ${resp.status}`)
 }
 
 // Public, unauthenticated — protected by contact-gate + rate limiting instead of auth.
