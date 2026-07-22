@@ -7,7 +7,7 @@ const WM_TAG = 'Where Brands Show Up'
 function brandRow(logoUrl) {
   return `
       <div class="brand-row">
-        <div class="badge"><img src="${logoUrl}"></div>
+        <div class="badge"><img src="${escapeAttr(logoUrl)}"></div>
         <div class="wordmark-col"><div class="wordmark">${WORDMARK}</div><div class="wm-tag">${WM_TAG}</div></div>
       </div>`
 }
@@ -44,6 +44,14 @@ function escapeHtml(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// escapeHtml only covers &/</>, insufficient for values landing inside quoted
+// CSS url()/HTML attribute contexts (photoUrls) — also escape quotes here.
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/'/g, '&#39;').replace(/"/g, '&quot;')
+}
+
 // content.backCover.footerText may contain a literal newline for the 2-line
 // footer ("SNACKET FOODS LLC\nCharlotte, NC · snacketnow.com") — render as <br>.
 function footerHtml(footerText) {
@@ -59,7 +67,7 @@ ${sharedHead(palette)}
 <style>
   .panel-back { left: 0.065in; }
   .panel-cover { left: 5.555in; }
-  .panel-back .photo { background-image: url('${photoUrls.backCoverPhotoUrl}'); background-position: 19% center; }
+  .panel-back .photo { background-image: url('${escapeAttr(photoUrls.backCoverPhotoUrl)}'); background-position: 19% center; }
   .panel-back .tint { background: linear-gradient(180deg, rgba(18,80,43,0.30) 0%, rgba(20,22,25,0.50) 38%, rgba(15,16,18,0.86) 100%); }
   .panel-back .big-word { font-size: 70px; }
   .panel-back .tagline { margin-top: 10px; }
@@ -72,7 +80,7 @@ ${sharedHead(palette)}
   .qrbox { width: 77px; height: 77px; flex: 0 0 77px; background: var(--beige); border-radius: 6px; padding: 6px; box-shadow: 0 3px 14px rgba(0,0,0,0.4); }
   .qrbox img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .bfoot { font-size: 11px; color: rgba(230,213,181,0.75); line-height: 1.5; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
-  .panel-cover .photo { background-image: url('${photoUrls.coverPhotoUrl}'); background-position: 52% center; }
+  .panel-cover .photo { background-image: url('${escapeAttr(photoUrls.coverPhotoUrl)}'); background-position: 52% center; }
   .panel-cover .tint { background: linear-gradient(160deg, rgba(18,80,43,0.55) 0%, rgba(28,30,33,0.35) 45%, rgba(20,22,25,0.72) 100%); }
   .eyebrow { margin-top: 12px; font-size: 14px; letter-spacing: 3px; font-weight: 700; color: var(--green); text-transform: uppercase; }
   .panel-cover .big-word { font-size: 81px; }
@@ -98,7 +106,7 @@ ${sharedHead(palette)}
       <div class="cta-line">${escapeHtml(backCover.ctaLine)}</div>
       <div class="bblock">
         <div class="bfoot">${footerHtml(backCover.footerText)}</div>
-        <div class="qrbox"><img src="${photoUrls.qrUrl}"></div>
+        <div class="qrbox"><img src="${escapeAttr(photoUrls.qrUrl)}"></div>
       </div>
     </div>
   </div>
@@ -135,7 +143,7 @@ ${sharedHead(palette)}
   .tagline { margin-top: 10px; }
   .tagline .lead { font-size: 19px; }
   .tagline .desc { font-size: 16px; max-width: 95%; }
-  .panel-left .photo { background-image: url('${photoUrls.interiorLeftPhotoUrl}'); background-position: 48% center;
+  .panel-left .photo { background-image: url('${escapeAttr(photoUrls.interiorLeftPhotoUrl)}'); background-position: 48% center;
     transform: scale(1.15); transform-origin: 48% 72%; }
   .intro { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.92); line-height: 1.4; width: 88%; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
   .glass { background: rgba(230,213,181,0.13); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
@@ -149,7 +157,7 @@ ${sharedHead(palette)}
   .result-row { font-size: 11px; color: #fff; margin-top: 8px; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,0.4); width: 88%; }
   .result-row b { font-weight: 700; letter-spacing: 0.4px; }
   .result-row.c-green b { color: var(--green); } .result-row.c-gold b { color: var(--gold); }
-  .panel-right .photo { background-image: url('${photoUrls.interiorRightPhotoUrl}'); background-position: 53% center;
+  .panel-right .photo { background-image: url('${escapeAttr(photoUrls.interiorRightPhotoUrl)}'); background-position: 53% center;
     transform: scale(1.15); transform-origin: 53% 68%; }
   .row { background: rgba(230,213,181,0.15); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; width: 82%;
