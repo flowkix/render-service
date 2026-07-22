@@ -3,7 +3,10 @@ const { spawn } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const net = require('net')
+const dns = require('dns').promises
 const { randomUUID } = require('crypto')
+const axios = require('axios')
 const { renderReel } = require('./src/render')
 const { getClient } = require('./src/supabase')
 const { downloadFile, extFromUrl } = require('./src/downloader')
@@ -11,6 +14,9 @@ const { generateEvScene } = require('./src/ev-scene')
 const { generateDeckPdf } = require('./src/deck-pdf')
 const { generateCarouselSlide, generateOverlaySlide } = require('./src/slide-gen')
 const { uploadImage } = require('./src/supabase')
+const { runBranding } = require('./src/ev-engine')
+const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
+const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -105,6 +111,188 @@ app.post('/generate-ev-scene', async (req, res) => {
   } catch (err) {
     console.error(`[ev-scene] FAILED — ${prospect_id}:`, err.message)
     res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// SSRF guard for the public route below only. Not exported/shared — the internal
+// /generate-ev-scene route and src/ev-engine/assets.js's fetchBuffer() are left
+// untouched; this exists solely because /generate-ev-scene-public is unauthenticated
+// and internet-facing, so a raw URL passthrough into fetchBuffer() would let anyone
+// probe internal Railway network addresses or cloud metadata endpoints.
+const PRIVATE_IPV4_RANGES = [
+  { base: [10, 0, 0, 0], mask: 8 },
+  { base: [172, 16, 0, 0], mask: 12 },
+  { base: [192, 168, 0, 0], mask: 16 },
+  { base: [127, 0, 0, 0], mask: 8 },
+  { base: [169, 254, 0, 0], mask: 16 }, // link-local, incl. cloud metadata 169.254.169.254
+  { base: [0, 0, 0, 0], mask: 8 },
+]
+
+function ipv4InRange(ip, base, maskBits) {
+  const p = ip.split('.').map(Number)
+  const baseInt = (base[0] << 24) | (base[1] << 16) | (base[2] << 8) | base[3]
+  const ipInt = (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]
+  const maskInt = maskBits === 0 ? 0 : (~0 << (32 - maskBits))
+  return (ipInt & maskInt) === (baseInt & maskInt)
+}
+
+function isPrivateOrReservedIp(ip) {
+  if (net.isIPv4(ip)) {
+    return PRIVATE_IPV4_RANGES.some(r => ipv4InRange(ip, r.base, r.mask))
+  }
+  if (net.isIPv6(ip)) {
+    const lower = ip.toLowerCase()
+    if (lower === '::1' || lower === '::') return true
+    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
+    if (mapped) return isPrivateOrReservedIp(mapped[1])
+    const firstHextet = parseInt(lower.split(':')[0] || '0', 16)
+    if (firstHextet >= 0xfe80 && firstHextet <= 0xfebf) return true // fe80::/10 link-local
+    if (firstHextet >= 0xfc00 && firstHextet <= 0xfdff) return true // fc00::/7 unique local
+    return false
+  }
+  return true // unrecognized format — fail closed
+}
+
+const MAX_LOGO_FETCH_BYTES = 8_000_000 // matches EV Engine v3's known 8MB inline (base64) payload ceiling
+
+// Resolves the hostname ourselves and rejects private/reserved IPs BEFORE fetching,
+// then fetches with a size cap and no redirect-following (so a public-looking host
+// can't 302 us to an internal address after the DNS check passes).
+// Accepted residual risk: this re-resolves the hostname on the actual axios.get()
+// rather than pinning the checked IP, so a DNS-rebinding attacker with a very low
+// TTL could swap in a private address between the check and the fetch. Not pinned
+// because this is a low-value target (marketing microsite logo fetch, not a
+// security product) — if this ever needs closing, fetch by IP with a Host header
+// override instead of re-passing the hostname.
+async function fetchPublicUrlBuffer(urlString) {
+  let parsed
+  try {
+    parsed = new URL(urlString)
+  } catch (_) {
+    throw new Error('logo_source is not a valid URL')
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('logo_source must use http or https')
+  }
+
+  let addresses
+  try {
+    addresses = await dns.lookup(parsed.hostname, { all: true })
+  } catch (err) {
+    throw new Error(`could not resolve logo_source host: ${err.message}`)
+  }
+  if (addresses.length === 0 || addresses.some(a => isPrivateOrReservedIp(a.address))) {
+    throw new Error('logo_source resolves to a disallowed network address')
+  }
+
+  const resp = await axios.get(urlString, {
+    responseType: 'arraybuffer',
+    timeout: 15000,
+    maxContentLength: MAX_LOGO_FETCH_BYTES,
+    maxRedirects: 0,
+  })
+  return Buffer.from(resp.data)
+}
+
+// Public, unauthenticated — protected by contact-gate + rate limiting instead of auth.
+// Branding-stage-only by design (2026-07-21 decision): no scene/staff generation here,
+// sidesteps the known scene-stage staff-guest interaction bug entirely. See
+// docs/lessons/failed-approaches.md "EV IMAGE ENGINE V3 — scene-stage staff/interaction prompt wording".
+app.post('/generate-ev-scene-public', async (req, res) => {
+  const { name, company, email, logo_source, honeypot } = req.body
+
+  if (honeypot && String(honeypot).trim() !== '') {
+    // Bot caught by the honeypot — respond as if successful, don't tip it off.
+    return res.json({ ok: true, image_url: null })
+  }
+  if (!name || !company || !email || !logo_source) {
+    return res.status(400).json({ ok: false, error: 'name, company, email, and logo_source are required' })
+  }
+  if (typeof name !== 'string' || typeof company !== 'string' || typeof email !== 'string') {
+    return res.status(400).json({ ok: false, error: 'name, company, and email must be text' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ ok: false, error: 'invalid email' })
+  }
+  if (name.length > 200 || company.length > 200) {
+    return res.status(400).json({ ok: false, error: 'name and company must be 200 characters or fewer' })
+  }
+  if (email.length > 320) {
+    return res.status(400).json({ ok: false, error: 'email must be 320 characters or fewer' })
+  }
+
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown'
+
+  const leadId = randomUUID()
+  let snacketOs
+  try {
+    snacketOs = getSnacketOsClient()
+  } catch (err) {
+    console.error(`[clt-alliance] snacket-os client init FAILED — ${leadId}:`, err.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  let ipHash
+  try {
+    ;({ ipHash } = checkRateLimit({ ip: clientIp, email }))
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  // Insert the lead row as 'pending' before generating, so a crash mid-generation
+  // still leaves an auditable record.
+  const { error: insertError } = await snacketOs.from('clt_alliance_leads').insert({
+    id: leadId,
+    contact_name: name,
+    contact_company: company,
+    contact_email: email,
+    logo_source_label: String(logo_source).slice(0, 200),
+    status: 'pending',
+    ip_hash: ipHash,
+    user_agent: req.headers['user-agent'] || null,
+  })
+  if (insertError) {
+    console.error(`[clt-alliance] lead insert FAILED — ${leadId}:`, insertError.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  try {
+    console.log(`[clt-alliance] start — ${leadId} / ${company}`)
+
+    let logoBuffer
+    if (/^data:/.test(logo_source)) {
+      const base64 = logo_source.split(',')[1]
+      if (!base64) throw new Error('malformed data URL')
+      logoBuffer = Buffer.from(base64, 'base64')
+    } else if (/^https?:\/\//i.test(logo_source)) {
+      // Fetched ourselves (DNS-resolved + private-IP-checked + size-capped) rather than
+      // passed through as a raw URL string — this route is public/unauthenticated, so
+      // runBranding always gets a Buffer here, never a URL for fetchBuffer to dereference.
+      logoBuffer = await fetchPublicUrlBuffer(logo_source)
+    } else {
+      throw new Error('logo_source must be a data: URL or an http(s) URL')
+    }
+
+    const { buffer } = await runBranding({
+      companyName: company,
+      logoSource: logoBuffer,
+      zones: 'all',
+    })
+
+    const imageUrl = await uploadCltAlliancePreview(buffer, leadId)
+
+    await snacketOs.from('clt_alliance_leads')
+      .update({ status: 'completed', ev_image_url: imageUrl })
+      .eq('id', leadId)
+
+    console.log(`[clt-alliance] done — ${leadId} / ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl, lead_id: leadId })
+  } catch (err) {
+    console.error(`[clt-alliance] FAILED — ${leadId}:`, err.message)
+    await snacketOs.from('clt_alliance_leads')
+      .update({ status: 'failed', error_message: err.message.slice(0, 2000) })
+      .eq('id', leadId)
+    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   }
 })
 
