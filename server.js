@@ -254,11 +254,37 @@ async function fetchPublicUrlBuffer(urlString, redirectsLeft = 5) {
   throw new Error(`logo_source fetch failed with status ${resp.status}`)
 }
 
+// Allowed browser origins for the public generator endpoint below. This route is called
+// directly via fetch() from the public snacketnow.com site, a different origin from this
+// Railway service — without an explicit Access-Control-Allow-Origin, browsers block the
+// response entirely (confirmed live: every real end-user submission failed with a CORS
+// preflight error, even though direct server-to-server requests to this route worked fine
+// and masked the problem — CORS is a browser-only restriction, not enforced by curl/axios/etc).
+const GENERATOR_ALLOWED_ORIGINS = new Set([
+  'https://snacketnow.com',
+  'https://www.snacketnow.com',
+])
+
+function applyGeneratorCors(req, res) {
+  const origin = req.headers.origin
+  if (origin && GENERATOR_ALLOWED_ORIGINS.has(origin)) {
+    res.set('Access-Control-Allow-Origin', origin)
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.set('Access-Control-Allow-Headers', 'Content-Type')
+  }
+}
+
+app.options('/generate-ev-scene-public', (req, res) => {
+  applyGeneratorCors(req, res)
+  res.sendStatus(204)
+})
+
 // Public, unauthenticated — protected by contact-gate + rate limiting instead of auth.
 // Branding-stage-only by design (2026-07-21 decision): no scene/staff generation here,
 // sidesteps the known scene-stage staff-guest interaction bug entirely. See
 // docs/lessons/failed-approaches.md "EV IMAGE ENGINE V3 — scene-stage staff/interaction prompt wording".
 app.post('/generate-ev-scene-public', async (req, res) => {
+  applyGeneratorCors(req, res)
   const { name, company, email, logo_source, honeypot } = req.body
 
   if (honeypot && String(honeypot).trim() !== '') {
