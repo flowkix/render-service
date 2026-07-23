@@ -57,6 +57,8 @@ function rubricFor(record) {
     { id: 'backdrop_with_logo', q: 'Is there a printed step-and-repeat backdrop displaying the client logo?' },
     { id: 'red_carpet_at_backdrop', q: 'Is there a red carpet in front of the step-and-repeat backdrop?' },
     { id: 'chauvet_fixtures_floor_mounted', q: 'Are 4 LED par light fixtures visible sitting directly on the floor (not on tripods/stands) projecting colored light upward, roughly 2 near the backdrop and 2 near the EV?' },
+    { id: 'bar_tables_present', q: 'Are white high bar-height cocktail tables with tufted-leather bar stools visible in the scene?' },
+    { id: 'ev_front_carpet_present', q: 'Is there a carpet (same material/color as the step-and-repeat carpet) placed in front of the EV, separate from the backdrop carpet?' },
     { id: 'photographer_present', q: 'Is a professional photographer visible photographing guests near the EV or at the step-and-repeat?' },
     { id: 'no_watermarks', q: 'Is the image free of text overlays, borders and watermarks?' },
   ]
