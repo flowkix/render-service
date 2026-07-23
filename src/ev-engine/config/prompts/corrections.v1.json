@@ -55,8 +55,15 @@
       "id": "staff-distinguishable-and-conversing",
       "appliesTo": "scene",
       "active": true,
-      "failureMode": "Staff not visually distinguishable from guests, or shown in a forced hand-off pose instead of natural conversation",
-      "note": "The EV Operator and Brand Ambassador must be immediately distinguishable from attendees by their uniform. Both are shown interacting and conversing naturally with nearby guests — natural conversational body language and arm gestures. Do NOT depict a forced physical hand-off of an object between staff and a guest."
+      "failureMode": "Staff not visually distinguishable from guests (uniform alone blends in with guest attire at upscale/cocktail venues), or shown standing alone with no guest engaged, or shown in a forced hand-off pose instead of natural conversation",
+      "note": "Uniform alone is NOT a sufficient differentiator — at upscale or cocktail-style venues, guests may dress in similarly formal attire. In addition to the uniform, the EV Operator and Brand Ambassador must EACH wear a visible branded lanyard with an ID badge (clearly visible, high-contrast against the uniform) — this badge is a hard requirement regardless of venue or theme, not an optional accessory. Both must be shown actively interacting and conversing naturally with at least one guest who is visibly engaged with them — natural conversational body language and arm gestures. Do NOT depict staff standing alone with no guest nearby, and do NOT depict a forced physical hand-off of an object between staff and a guest."
+    },
+    {
+      "id": "staff-not-photo-subject",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Staff turn to face the photographer and pose for a portrait instead of actively conversing with a nearby guest",
+      "note": "The professional photographer's subject is the activation and its GUESTS — never the EV Operator or Brand Ambassador. Staff must NOT turn to face the photographer, look at the camera, or hold a posed stance. At all times, staff must be captured mid-conversation with a guest: eye contact, gestures, and attention all directed at that guest, not at the camera."
     },
     {
       "id": "led-posters-spec",
