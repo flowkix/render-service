@@ -444,6 +444,17 @@ app.post('/generate-ev-scene-public', async (req, res) => {
     await snacketOs.from('clt_alliance_leads')
       .update({ status: 'failed', error_message: err.message.slice(0, 2000) })
       .eq('id', leadId)
+
+    // Real prospects hit this on the public microsite and have no reason to ever tell
+    // us — this is the only signal we get. Fire-and-forget, same pattern as the sales
+    // notification: never let a slow/failed alert affect the user-facing error response.
+    axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-failure-alert', {
+      name, company, email, error_message: err.message.slice(0, 2000), lead_id: leadId,
+      occurred_at: new Date().toISOString(),
+    }, { timeout: 10000 }).catch(alertErr => {
+      console.error(`[clt-alliance] failure alert FAILED — ${leadId}:`, alertErr.message)
+    })
+
     // Defense-in-depth alongside the MAX_LOGO_FETCH_BYTES sizing above: if the combined
     // base64 payload guard in assets.js's assertPayloadWithinLimit() still trips (e.g. the
     // reference image config changes later), surface a specific, actionable message instead
