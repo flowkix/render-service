@@ -18,6 +18,7 @@ const { uploadImage } = require('./src/supabase')
 const { runBranding } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
+const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
 
 const app = express()
@@ -265,7 +266,7 @@ const GENERATOR_ALLOWED_ORIGINS = new Set([
   'https://www.snacketnow.com',
 ])
 
-function applyGeneratorCors(req, res) {
+function applyCltAllianceCors(req, res) {
   const origin = req.headers.origin
   if (origin && GENERATOR_ALLOWED_ORIGINS.has(origin)) {
     res.set('Access-Control-Allow-Origin', origin)
@@ -275,24 +276,28 @@ function applyGeneratorCors(req, res) {
 }
 
 app.options('/generate-ev-scene-public', (req, res) => {
-  applyGeneratorCors(req, res)
+  applyCltAllianceCors(req, res)
   res.sendStatus(204)
 })
 
-// Public, unauthenticated — protected by contact-gate + rate limiting instead of auth.
-// Branding-stage-only by design (2026-07-21 decision): no scene/staff generation here,
-// sidesteps the known scene-stage staff-guest interaction bug entirely. See
-// docs/lessons/failed-approaches.md "EV IMAGE ENGINE V3 — scene-stage staff/interaction prompt wording".
-app.post('/generate-ev-scene-public', async (req, res) => {
-  applyGeneratorCors(req, res)
-  const { name, company, email, logo_source, honeypot } = req.body
+app.options('/clt-alliance/send-code', (req, res) => {
+  applyCltAllianceCors(req, res)
+  res.sendStatus(204)
+})
+
+// Sends a one-time verification code to the prospect's own email BEFORE any generation
+// runs, so a fake/typo'd email can never trigger (and never see) a real branding
+// generation. /generate-ev-scene-public below requires and consumes this code.
+app.post('/clt-alliance/send-code', async (req, res) => {
+  applyCltAllianceCors(req, res)
+  const { name, company, email, honeypot } = req.body
 
   if (honeypot && String(honeypot).trim() !== '') {
     // Bot caught by the honeypot — respond as if successful, don't tip it off.
-    return res.json({ ok: true, image_url: null })
+    return res.json({ ok: true })
   }
-  if (!name || !company || !email || !logo_source) {
-    return res.status(400).json({ ok: false, error: 'name, company, email, and logo_source are required' })
+  if (!name || !company || !email) {
+    return res.status(400).json({ ok: false, error: 'name, company, and email are required' })
   }
   if (typeof name !== 'string' || typeof company !== 'string' || typeof email !== 'string') {
     return res.status(400).json({ ok: false, error: 'name, company, and email must be text' })
@@ -305,6 +310,63 @@ app.post('/generate-ev-scene-public', async (req, res) => {
   }
   if (email.length > 320) {
     return res.status(400).json({ ok: false, error: 'email must be 320 characters or fewer' })
+  }
+
+  try {
+    checkResendLimit(email)
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  const code = storeCode(email)
+
+  // Awaited (unlike the sales/failure notifications below) — the user is actively
+  // waiting on this email to arrive, so we must know if it genuinely failed to send.
+  try {
+    await axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-send-code', {
+      name, company, email, code,
+    }, { timeout: 15000 })
+  } catch (err) {
+    console.error('[clt-alliance] verification code email FAILED to send:', err.message)
+    return res.status(500).json({ ok: false, error: 'Could not send your verification code — please try again.' })
+  }
+
+  res.json({ ok: true })
+})
+
+// Public, unauthenticated — protected by contact-gate + rate limiting instead of auth.
+// Branding-stage-only by design (2026-07-21 decision): no scene/staff generation here,
+// sidesteps the known scene-stage staff-guest interaction bug entirely. See
+// docs/lessons/failed-approaches.md "EV IMAGE ENGINE V3 — scene-stage staff/interaction prompt wording".
+app.post('/generate-ev-scene-public', async (req, res) => {
+  applyCltAllianceCors(req, res)
+  const { name, company, email, logo_source, honeypot, verification_code } = req.body
+
+  if (honeypot && String(honeypot).trim() !== '') {
+    // Bot caught by the honeypot — respond as if successful, don't tip it off.
+    return res.json({ ok: true, image_url: null })
+  }
+  if (!name || !company || !email || !logo_source || !verification_code) {
+    return res.status(400).json({ ok: false, error: 'name, company, email, logo_source, and verification_code are required' })
+  }
+  if (typeof name !== 'string' || typeof company !== 'string' || typeof email !== 'string') {
+    return res.status(400).json({ ok: false, error: 'name, company, and email must be text' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ ok: false, error: 'invalid email' })
+  }
+  if (name.length > 200 || company.length > 200) {
+    return res.status(400).json({ ok: false, error: 'name and company must be 200 characters or fewer' })
+  }
+  if (email.length > 320) {
+    return res.status(400).json({ ok: false, error: 'email must be 320 characters or fewer' })
+  }
+
+  // Checked before rate limiting / lead creation / generation — a wrong-code guess must
+  // never burn the real per-day generation allowance or touch Supabase.
+  const verification = verifyCode(email, verification_code)
+  if (!verification.valid) {
+    return res.status(400).json({ ok: false, error: verification.error })
   }
 
   // req.ip is proxy-aware once `trust proxy` is set (see app.set('trust proxy', 1) above) —
