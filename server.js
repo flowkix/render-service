@@ -345,6 +345,49 @@ app.post('/generate-ev-scene-public', async (req, res) => {
     return res.status(500).json({ ok: false, error: 'internal error' })
   }
 
+  // Mirror into the shared SNACKET-OS Pipeline `leads` table (source='clt_alliance')
+  // so this shows up in Pipeline like any other Stage A lead. clt_alliance_leads
+  // stays as the detailed audit/rate-limit record — this is just a summary row.
+  // Scoped to source='clt_alliance' on the email lookup so a shared email with a
+  // lead from a different source is never silently overwritten (same dedup pattern
+  // as pitch-elevator-ingest). Best-effort: a failure here must not break the actual
+  // image-generation feature, so errors are logged, not thrown.
+  let pipelineLeadId = null
+  try {
+    const { data: existingPipelineLead } = await snacketOs
+      .from('leads')
+      .select('id')
+      .eq('prospect_email', email)
+      .eq('source', 'clt_alliance')
+      .maybeSingle()
+
+    if (existingPipelineLead) {
+      pipelineLeadId = existingPipelineLead.id
+      await snacketOs.from('leads')
+        .update({ company_name: company, prospect_name: name })
+        .eq('id', pipelineLeadId)
+    } else {
+      const { data: newPipelineLead, error: pipelineInsertError } = await snacketOs
+        .from('leads')
+        .insert({
+          source: 'clt_alliance',
+          stage: 'deck',
+          company_name: company,
+          prospect_name: name,
+          prospect_email: email,
+        })
+        .select('id')
+        .single()
+      if (pipelineInsertError) {
+        console.error(`[clt-alliance] pipeline lead insert FAILED — ${leadId}:`, pipelineInsertError.message)
+      } else {
+        pipelineLeadId = newPipelineLead.id
+      }
+    }
+  } catch (err) {
+    console.error(`[clt-alliance] pipeline lead bridge FAILED — ${leadId}:`, err.message)
+  }
+
   try {
     console.log(`[clt-alliance] start — ${leadId} / ${company}`)
 
@@ -378,6 +421,12 @@ app.post('/generate-ev-scene-public', async (req, res) => {
     await snacketOs.from('clt_alliance_leads')
       .update({ status: 'completed', ev_image_url: imageUrl })
       .eq('id', leadId)
+
+    if (pipelineLeadId) {
+      await snacketOs.from('leads')
+        .update({ ev_image_url: imageUrl })
+        .eq('id', pipelineLeadId)
+    }
 
     console.log(`[clt-alliance] done — ${leadId} / ${imageUrl}`)
     res.json({ ok: true, image_url: imageUrl, lead_id: leadId })
