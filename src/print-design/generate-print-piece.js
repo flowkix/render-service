@@ -46,14 +46,21 @@ async function generatePrintPiece({ template_key, content, palette, photo_urls, 
     const frontStoragePath = `${client_id}/${template_key}/${jobId}-FRONT.pdf`
     const backStoragePath = `${client_id}/${template_key}/${jobId}-BACK.pdf`
 
+    // Log which side succeeded even on partial failure — if one upload lands
+    // and the other throws, Promise.all rejects with only one error and the
+    // successful object is otherwise an invisible orphan in the bucket.
     const [front_pdf_url, back_pdf_url] = await Promise.all([
-      uploadPdf(frontPdfPath, 'print-design-output', frontStoragePath),
-      uploadPdf(backPdfPath, 'print-design-output', backStoragePath),
+      uploadPdf(frontPdfPath, 'print-design-output', frontStoragePath)
+        .catch(err => { console.error(`[print-piece] FRONT upload failed (${frontStoragePath}):`, err.message); throw err }),
+      uploadPdf(backPdfPath, 'print-design-output', backStoragePath)
+        .catch(err => { console.error(`[print-piece] BACK upload failed (${backStoragePath}):`, err.message); throw err }),
     ])
+    console.log(`[print-piece] uploaded — front=${frontStoragePath} back=${backStoragePath}`)
 
     return { front_pdf_url, back_pdf_url }
   } finally {
-    await fs.rm(workDir, { recursive: true, force: true }).catch(() => {})
+    await fs.rm(workDir, { recursive: true, force: true })
+      .catch(err => console.error(`[print-piece] workDir cleanup failed (${workDir}):`, err.message))
   }
 }
 
