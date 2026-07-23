@@ -15,8 +15,9 @@ const { generateEvScene } = require('./src/ev-scene')
 const { generateDeckPdf } = require('./src/deck-pdf')
 const { generateCarouselSlide, generateOverlaySlide } = require('./src/slide-gen')
 const { uploadImage } = require('./src/supabase')
-const { runBranding } = require('./src/ev-engine')
+const { runBranding, runFull } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
+const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
 
@@ -444,6 +445,65 @@ app.post('/generate-ev-scene-public', async (req, res) => {
       ? 'Your logo image is too large to process — please use a smaller file and try again.'
       : 'Generation failed — our team has been notified.'
     res.status(500).json({ ok: false, error: userError })
+  }
+})
+
+// Authenticated, internal — for FLOWKIX workflows (n8n, HUB, future client microsites)
+// that need the full branding+scene pipeline via HTTP. Not public: requires a shared
+// secret header. Per-source rate limiting (not IP/email — this is an internal,
+// authenticated route with known callers) prevents one workflow's burst of generations
+// from starving or destabilizing generation for another concurrent caller.
+app.post('/generate-ev-scene-v2', async (req, res) => {
+  const secret = req.headers['x-render-secret']
+  if (!process.env.RENDER_SECRET) {
+    console.error('[scene-v2] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (secret !== process.env.RENDER_SECRET) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const { source, company_name, logo_source, theme, venue, table_count, led_poster_content } = req.body
+  if (!source || !company_name || !logo_source || !theme || !venue) {
+    return res.status(400).json({
+      ok: false,
+      error: 'source, company_name, logo_source, theme, and venue are required',
+    })
+  }
+  if (table_count !== undefined && (!Number.isInteger(table_count) || table_count < 0)) {
+    return res.status(400).json({ ok: false, error: 'table_count must be a non-negative integer if provided' })
+  }
+
+  try {
+    checkSceneRateLimit({ source })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  // uploadImage() (src/supabase.js) reads from a LOCAL FILE PATH via fs.createReadStream —
+  // it does not accept a Buffer directly. Write to a temp file first, same pattern already
+  // used by the /thumbnail route above (os.tmpdir() + randomUUID(), cleaned up in `finally`).
+  const tmpPath = path.join(os.tmpdir(), `scene-v2_${randomUUID()}.png`)
+  try {
+    console.log(`[scene-v2] start — ${source} / ${company_name}`)
+    const { scene } = await runFull({
+      companyName: company_name,
+      logoSource: logo_source,
+      theme,
+      venue,
+      tableCount: table_count,
+      ledPosterContent: led_poster_content,
+    })
+    fs.writeFileSync(tmpPath, scene.buffer)
+    const storagePath = `scene-v2/${source}/${randomUUID()}.png`
+    const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
+    console.log(`[scene-v2] done — ${source} / ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl })
+  } catch (err) {
+    console.error(`[scene-v2] FAILED — ${source}:`, err.message)
+    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
+  } finally {
+    try { fs.unlinkSync(tmpPath) } catch (_) {}
   }
 })
 
