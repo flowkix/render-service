@@ -49,24 +49,17 @@ function rubricFor(record) {
   }
   const checks = [
     { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
-    { id: 'staff_outside_ev', q: 'Are ALL staff members standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind the counter, or framed within the service opening)?' },
-    { id: 'flyer_interaction', q: 'Is at least one guest receiving a printed flyer from a staff member?' },
-    { id: 'beverage_pastry_interaction', q: 'Is at least one guest at the service window receiving a beverage cup and a pastry from an operator who is standing on the ground outside the vehicle (beside the window — an operator inside the window does NOT satisfy this check)?' },
+    { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
+    { id: 'staff_distinguishable_and_conversing', q: 'Are the EV Operator and/or Brand Ambassador clearly distinguishable from regular attendees by uniform, and shown interacting or conversing naturally with nearby guests (not necessarily a physical object hand-off — natural conversation/gestures are sufficient)?' },
+    { id: 'led_posters_present', q: 'Are there 2 free-standing LED floor posters, one on each side of the EV?' },
     { id: 'balloon_arch_present', q: 'Is there a balloon arch over or near the EV?' },
     { id: 'balloon_colors_match_logo', q: 'Do the balloon arch colors match the client logo colors (IMAGE 2)?' },
+    { id: 'backdrop_with_logo', q: 'Is there a printed step-and-repeat backdrop displaying the client logo?' },
+    { id: 'red_carpet_at_backdrop', q: 'Is there a red carpet in front of the step-and-repeat backdrop?' },
+    { id: 'chauvet_fixtures_floor_mounted', q: 'Are 4 LED par light fixtures visible sitting directly on the floor (not on tripods/stands) projecting colored light upward, roughly 2 near the backdrop and 2 near the EV?' },
+    { id: 'photographer_present', q: 'Is a professional photographer visible photographing guests near the EV or at the step-and-repeat?' },
     { id: 'no_watermarks', q: 'Is the image free of text overlays, borders and watermarks?' },
   ]
-  if (record.presetId === 'P2' || record.presetId === 'P3') {
-    checks.push(
-      { id: 'backdrop_with_logo', q: 'Is there a printed step-and-repeat backdrop displaying the client logo?' },
-      { id: 'red_carpet', q: 'Is there a red carpet in front of the backdrop?' },
-      { id: 'chauvet_fixtures', q: 'Are LED par light fixtures visible on the floor projecting colored light onto the backdrop?' },
-      { id: 'photographer_present', q: 'Is a professional photographer photographing posing guests?' }
-    )
-  }
-  if (record.presetId === 'P3') {
-    checks.push({ id: 'vip_tables_stools', q: 'Is there a VIP area with cocktail tables (white covers) and white tufted bar stools with chrome bases?' })
-  }
   return checks
 }
 

@@ -127,7 +127,7 @@ async function cmdRun(args) {
     }
     const record = {
       caseId: c.caseId, stage: c.stage, logoId: c.logo.id, companyName: c.logo.companyName,
-      zoneSetName: c.zoneSetName || null, presetId: c.presetId || null,
+      zoneSetName: c.zoneSetName || null, theme: c.theme || null, venue: c.venue || null,
       provider: c.candidate.provider, model: c.candidate.model,
     }
     const t0 = Date.now()
@@ -149,7 +149,8 @@ async function cmdRun(args) {
           companyName: c.logo.companyName,
           brandedEvBuffer,
           logoSource: c.logo.absPath,
-          presetId: c.presetId,
+          theme: c.theme,
+          venue: c.venue,
           providerOverride: c.candidate,
           ...configs,
         }))
