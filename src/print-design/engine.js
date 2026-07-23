@@ -16,7 +16,6 @@ async function renderHtmlStringToPng({ html, cssWidthIn, cssHeightIn, dpi, outpu
   const deviceScaleFactor = dpi / 96
 
   const tmpHtmlPath = path.join(os.tmpdir(), `print-piece-${randomUUID()}.html`)
-  await fs.writeFile(tmpHtmlPath, html, 'utf8')
 
   const launchOpts = {
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
@@ -26,14 +25,16 @@ async function renderHtmlStringToPng({ html, cssWidthIn, cssHeightIn, dpi, outpu
     launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
   }
 
-  const browser = await puppeteer.launch(launchOpts)
+  let browser
   try {
+    await fs.writeFile(tmpHtmlPath, html, 'utf8')
+    browser = await puppeteer.launch(launchOpts)
     const page = await browser.newPage()
     await page.setViewport({ width: widthPx, height: heightPx, deviceScaleFactor })
     await page.goto(pathToFileURL(tmpHtmlPath).href, { waitUntil: 'networkidle0', timeout: 60000 })
     await page.screenshot({ path: outputPngPath })
   } finally {
-    await browser.close()
+    if (browser) await browser.close()
     await fs.unlink(tmpHtmlPath).catch(() => {})
   }
 }
