@@ -5,7 +5,7 @@ const path = require('path')
 const os = require('os')
 const net = require('net')
 const dns = require('dns').promises
-const { randomUUID } = require('crypto')
+const { randomUUID, timingSafeEqual } = require('crypto')
 const axios = require('axios')
 const sharp = require('sharp')
 const { renderReel } = require('./src/render')
@@ -448,6 +448,18 @@ app.post('/generate-ev-scene-public', async (req, res) => {
   }
 })
 
+// Constant-time string comparison for shared-secret checks — plain !== leaks timing
+// info about how many leading bytes match. Lengths are compared first (throwing that
+// away as a much smaller side-channel than leaking prefix-match length is the standard
+// accepted mitigation), and a missing header (undefined) is coerced to '' rather than
+// being passed to Buffer.from(undefined), which would throw.
+function safeCompare(a, b) {
+  const bufA = Buffer.from(String(a || ''))
+  const bufB = Buffer.from(String(b || ''))
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
+}
+
 // Authenticated, internal — for FLOWKIX workflows (n8n, HUB, future client microsites)
 // that need the full branding+scene pipeline via HTTP. Not public: requires a shared
 // secret header. Per-source rate limiting (not IP/email — this is an internal,
@@ -459,7 +471,7 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
     console.error('[scene-v2] RENDER_SECRET env var not set — refusing all requests')
     return res.status(500).json({ ok: false, error: 'internal error' })
   }
-  if (secret !== process.env.RENDER_SECRET) {
+  if (!safeCompare(secret, process.env.RENDER_SECRET)) {
     return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
 
@@ -486,9 +498,28 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
   const tmpPath = path.join(os.tmpdir(), `scene-v2_${randomUUID()}.png`)
   try {
     console.log(`[scene-v2] start — ${source} / ${company_name}`)
+
+    // Resolve logo_source to a Buffer ourselves, same as /generate-ev-scene-public above —
+    // never pass the raw string through to runFull/runBranding, since fetchBuffer() in
+    // src/ev-engine/assets.js treats any non-http(s) string as a LOCAL FILE PATH and reads
+    // it off disk. This route is authenticated but still accepts arbitrary caller input in
+    // logo_source, so without this resolution step it's an arbitrary local-file-read
+    // primitive (e.g. logo_source: "../../.env"). Reuses the existing SSRF-safe
+    // fetchPublicUrlBuffer() rather than duplicating its DNS/private-IP/redirect logic.
+    let logoBuffer
+    if (/^data:/.test(logo_source)) {
+      const base64 = logo_source.split(',')[1]
+      if (!base64) throw new Error('malformed data URL')
+      logoBuffer = Buffer.from(base64, 'base64')
+    } else if (/^https?:\/\//i.test(logo_source)) {
+      logoBuffer = await fetchPublicUrlBuffer(logo_source)
+    } else {
+      throw new Error('logo_source must be a data: URL or an http(s) URL')
+    }
+
     const { scene } = await runFull({
       companyName: company_name,
-      logoSource: logo_source,
+      logoSource: logoBuffer,
       theme,
       venue,
       tableCount: table_count,
