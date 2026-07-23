@@ -28,7 +28,7 @@ async function runScene(opts, configs = loadEngineConfig()) {
 }
 
 async function runFull(
-  { companyName, logoSource, zones = 'all', presetId, params = {}, brandingOverride, sceneOverride, cache = null },
+  { companyName, logoSource, zones = 'all', theme, venue, tableCount, ledPosterContent, params = {}, brandingOverride, sceneOverride, cache = null },
   configs = loadEngineConfig()
 ) {
   const branding = await runBrandingStage({
@@ -37,7 +37,7 @@ async function runFull(
     ...configs,
   })
   const scene = await runSceneStage({
-    companyName, brandedEvBuffer: branding.buffer, logoSource, presetId, params,
+    companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, tableCount, ledPosterContent, params,
     providerOverride: sceneOverride,
     ...configs,
   })
