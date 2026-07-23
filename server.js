@@ -428,6 +428,15 @@ app.post('/generate-ev-scene-public', async (req, res) => {
         .eq('id', pipelineLeadId)
     }
 
+    // Fire-and-forget notification to sales — the n8n webhook responds immediately
+    // (responseMode: onReceived) and this must never delay or fail the user-facing
+    // response, which already has its own generated preview regardless of this call.
+    axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-sales-notify', {
+      name, company, email, image_url: imageUrl, lead_id: pipelineLeadId || leadId,
+    }, { timeout: 10000 }).catch(err => {
+      console.error(`[clt-alliance] sales notification FAILED — ${leadId}:`, err.message)
+    })
+
     console.log(`[clt-alliance] done — ${leadId} / ${imageUrl}`)
     res.json({ ok: true, image_url: imageUrl, lead_id: leadId })
   } catch (err) {
