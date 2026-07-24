@@ -7,12 +7,18 @@ const { getProvider } = require('../providers')
  * Stage 2 — scene pass.
  * IMAGE A = branded EV (stage-1 output, approved) — primary, per the proven
  * "approved image goes first" rule. IMAGE B = client logo (balloon/backdrop/cup colors).
+ *
+ * v2: theme/venue (free text) replace presetId; tableCount/ledPosterContent are the
+ * only structured overrides of the always-on fixed infrastructure.
  */
 async function runSceneStage({
   companyName,
   brandedEvBuffer,
   logoSource,
-  presetId,
+  theme,
+  venue,
+  tableCount,
+  ledPosterContent,
   params = {},
   engineConfig,
   presetsConfig,
@@ -25,7 +31,10 @@ async function runSceneStage({
 
   const logoBuffer = await fetchBuffer(logoSource)
   const { prompt, aspectRatio } = buildScenePrompt({
-    presetId,
+    theme,
+    venue,
+    tableCount,
+    ledPosterContent,
     params,
     companyName,
     presetsConfig,
@@ -44,11 +53,11 @@ async function runSceneStage({
       aspectRatio: params.aspect_ratio_override || aspectRatio,
       resolution: stageCfg.resolution,
       timeoutMs: engineConfig.limits.timeoutMs,
-      label: `scene:${presetId}:${companyName}`,
+      label: `scene:${venue}:${companyName}`,
     },
   })
 
-  return { buffer, meta: { ...meta, prompt, presetId } }
+  return { buffer, meta: { ...meta, prompt, theme, venue } }
 }
 
 module.exports = { runSceneStage }

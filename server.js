@@ -5,7 +5,7 @@ const path = require('path')
 const os = require('os')
 const net = require('net')
 const dns = require('dns').promises
-const { randomUUID } = require('crypto')
+const { randomUUID, timingSafeEqual } = require('crypto')
 const axios = require('axios')
 const sharp = require('sharp')
 const { renderReel } = require('./src/render')
@@ -15,8 +15,9 @@ const { generateEvScene } = require('./src/ev-scene')
 const { generateDeckPdf } = require('./src/deck-pdf')
 const { generateCarouselSlide, generateOverlaySlide } = require('./src/slide-gen')
 const { uploadImage } = require('./src/supabase')
-const { runBranding } = require('./src/ev-engine')
+const { runBranding, runFull } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
+const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
@@ -526,6 +527,96 @@ app.post('/generate-ev-scene-public', async (req, res) => {
       ? 'Your logo image is too large to process — please use a smaller file and try again.'
       : 'Generation failed — our team has been notified.'
     res.status(500).json({ ok: false, error: userError })
+  }
+})
+
+// Constant-time string comparison for shared-secret checks — plain !== leaks timing
+// info about how many leading bytes match. Lengths are compared first (throwing that
+// away as a much smaller side-channel than leaking prefix-match length is the standard
+// accepted mitigation), and a missing header (undefined) is coerced to '' rather than
+// being passed to Buffer.from(undefined), which would throw.
+function safeCompare(a, b) {
+  const bufA = Buffer.from(String(a || ''))
+  const bufB = Buffer.from(String(b || ''))
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
+}
+
+// Authenticated, internal — for FLOWKIX workflows (n8n, HUB, future client microsites)
+// that need the full branding+scene pipeline via HTTP. Not public: requires a shared
+// secret header. Per-source rate limiting (not IP/email — this is an internal,
+// authenticated route with known callers) prevents one workflow's burst of generations
+// from starving or destabilizing generation for another concurrent caller.
+app.post('/generate-ev-scene-v2', async (req, res) => {
+  const secret = req.headers['x-render-secret']
+  if (!process.env.RENDER_SECRET) {
+    console.error('[scene-v2] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!safeCompare(secret, process.env.RENDER_SECRET)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const { source, company_name, logo_source, theme, venue, table_count, led_poster_content } = req.body
+  if (!source || !company_name || !logo_source || !theme || !venue) {
+    return res.status(400).json({
+      ok: false,
+      error: 'source, company_name, logo_source, theme, and venue are required',
+    })
+  }
+  if (table_count !== undefined && (!Number.isInteger(table_count) || table_count < 0)) {
+    return res.status(400).json({ ok: false, error: 'table_count must be a non-negative integer if provided' })
+  }
+
+  try {
+    checkSceneRateLimit({ source })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  // uploadImage() (src/supabase.js) reads from a LOCAL FILE PATH via fs.createReadStream —
+  // it does not accept a Buffer directly. Write to a temp file first, same pattern already
+  // used by the /thumbnail route above (os.tmpdir() + randomUUID(), cleaned up in `finally`).
+  const tmpPath = path.join(os.tmpdir(), `scene-v2_${randomUUID()}.png`)
+  try {
+    console.log(`[scene-v2] start — ${source} / ${company_name}`)
+
+    // Resolve logo_source to a Buffer ourselves, same as /generate-ev-scene-public above —
+    // never pass the raw string through to runFull/runBranding, since fetchBuffer() in
+    // src/ev-engine/assets.js treats any non-http(s) string as a LOCAL FILE PATH and reads
+    // it off disk. This route is authenticated but still accepts arbitrary caller input in
+    // logo_source, so without this resolution step it's an arbitrary local-file-read
+    // primitive (e.g. logo_source: "../../.env"). Reuses the existing SSRF-safe
+    // fetchPublicUrlBuffer() rather than duplicating its DNS/private-IP/redirect logic.
+    let logoBuffer
+    if (/^data:/.test(logo_source)) {
+      const base64 = logo_source.split(',')[1]
+      if (!base64) throw new Error('malformed data URL')
+      logoBuffer = Buffer.from(base64, 'base64')
+    } else if (/^https?:\/\//i.test(logo_source)) {
+      logoBuffer = await fetchPublicUrlBuffer(logo_source)
+    } else {
+      throw new Error('logo_source must be a data: URL or an http(s) URL')
+    }
+
+    const { scene } = await runFull({
+      companyName: company_name,
+      logoSource: logoBuffer,
+      theme,
+      venue,
+      tableCount: table_count,
+      ledPosterContent: led_poster_content,
+    })
+    fs.writeFileSync(tmpPath, scene.buffer)
+    const storagePath = `scene-v2/${source}/${randomUUID()}.png`
+    const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
+    console.log(`[scene-v2] done — ${source} / ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl })
+  } catch (err) {
+    console.error(`[scene-v2] FAILED — ${source}:`, err.message)
+    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
+  } finally {
+    try { fs.unlinkSync(tmpPath) } catch (_) {}
   }
 })
 
