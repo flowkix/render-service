@@ -355,7 +355,7 @@ app.post('/generate-print-piece', async (req, res) => {
   try {
     console.log(`[print-piece] start — ${client_id} / ${template_key}`)
     const result = await generatePrintPiece({ template_key, content, palette, photo_urls, client_id })
-    console.log(`[print-piece] done — ${result.front_pdf_url}`)
+    console.log(`[print-piece] done — front=${result.front_pdf_url} back=${result.back_pdf_url}`)
     res.json({ ok: true, ...result })
   } catch (err) {
     console.error(`[print-piece] FAILED — ${client_id}:`, err.message)
