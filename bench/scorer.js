@@ -50,7 +50,8 @@ function rubricFor(record) {
   const checks = [
     { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
     { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
-    { id: 'staff_distinguishable_and_conversing', q: 'Are the EV Operator and/or Brand Ambassador clearly distinguishable from regular attendees by uniform, and shown interacting or conversing naturally with nearby guests (not necessarily a physical object hand-off — natural conversation/gestures are sufficient)?' },
+    { id: 'staff_distinguishable_and_conversing', q: 'Do the EV Operator and Brand Ambassador EACH wear a visible branded lanyard with an ID badge (not just a uniform — the badge itself must be visible), and are they shown actively conversing with at least one guest who is visibly engaged with them (not necessarily a physical object hand-off — natural conversation/gestures are sufficient, but a guest must be present and engaged, not staff standing alone)?' },
+    { id: 'staff_not_photo_subject', q: 'Are the EV Operator and Brand Ambassador captured mid-conversation with a guest — NOT turned to face the photographer, looking at the camera, or holding a posed stance? (If no photographer is visible in this image, this check passes automatically.)' },
     { id: 'led_posters_present', q: 'Are there 2 free-standing LED floor posters, one on each side of the EV?' },
     { id: 'balloon_arch_present', q: 'Is there a balloon arch over or near the EV?' },
     { id: 'balloon_colors_match_logo', q: 'Do the balloon arch colors match the client logo colors (IMAGE 2)?' },
