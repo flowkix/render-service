@@ -3,6 +3,28 @@ const axios = require('axios')
 const { Provider, priceFor } = require('./provider')
 const { assertPayloadWithinLimit } = require('../assets')
 
+// Gemini's image models return a plain 503 when the model is momentarily overloaded
+// (observed live 2026-07-23 — 2 of 4 real requests hit this in a row) with no
+// Retry-After header to key off. Only 5xx is retried — 4xx (bad request, auth, quota)
+// is a real problem retrying can't fix, so those fail fast as before.
+const MAX_RETRIES = 2
+const RETRY_DELAYS_MS = [1000, 3000]
+
+async function postWithRetry(url, body, options) {
+  let lastErr
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await axios.post(url, body, options)
+    } catch (err) {
+      lastErr = err
+      const status = err.response?.status
+      if (!status || status < 500 || attempt === MAX_RETRIES) throw err
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt]))
+    }
+  }
+  throw lastErr
+}
+
 // Direct HTTP to generativelanguage.googleapis.com (never SDK/native nodes — geo-block lesson 2026-07-03).
 // gemini-3-pro-image / gemini-3.1-flash-image validated 2026-07-20: :generateContent with
 // generationConfig.imageConfig { aspectRatio, imageSize } — the /v1beta/interactions endpoint
@@ -37,7 +59,7 @@ class GeminiProvider extends Provider {
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`
     const t0 = Date.now()
-    const resp = await axios.post(url, body, {
+    const resp = await postWithRetry(url, body, {
       headers: { 'Content-Type': 'application/json' },
       timeout: timeoutMs,
     })
