@@ -18,6 +18,7 @@ const { uploadImage } = require('./src/supabase')
 const { runBranding } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
+const { generatePrintPiece } = require('./src/print-design/generate-print-piece')
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -342,6 +343,22 @@ app.post('/generate-pdf', async (req, res) => {
     res.json({ ok: true, ...result })
   } catch (err) {
     console.error(`[deck-pdf] FAILED — ${prospect_id}:`, err.message)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+app.post('/generate-print-piece', async (req, res) => {
+  const { template_key, content, palette, photo_urls, client_id } = req.body
+  if (!template_key || !content || !palette || !photo_urls || !client_id) {
+    return res.status(400).json({ ok: false, error: 'template_key, content, palette, photo_urls, and client_id required' })
+  }
+  try {
+    console.log(`[print-piece] start — ${client_id} / ${template_key}`)
+    const result = await generatePrintPiece({ template_key, content, palette, photo_urls, client_id })
+    console.log(`[print-piece] done — ${result.front_pdf_url}`)
+    res.json({ ok: true, ...result })
+  } catch (err) {
+    console.error(`[print-piece] FAILED — ${client_id}:`, err.message)
     res.status(500).json({ ok: false, error: err.message })
   }
 })
