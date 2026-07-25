@@ -51,6 +51,8 @@ function rubricFor(record) {
     { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
     { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
     { id: 'staff_guests_present', q: 'Are event guests/attendees visible somewhere in the scene near the EV activation area (staff are not shown completely isolated with zero guests anywhere in the frame)? Pose and the specific form of interaction between staff and guests do NOT matter for this check — any pose is acceptable.' },
+    { id: 'operator_fixed_uniform', q: 'Is the EV Operator wearing a charcoal-and-beige polo shirt (with a logo on the chest) and khaki pants — a distinct staff/work uniform, NOT formal wear, NOT the same style of clothing as the surrounding guests?' },
+    { id: 'ambassador_has_flyers', q: 'Is the Brand Ambassador visibly holding a small stack of flyers or promotional cards in one hand (not empty-handed)?' },
     { id: 'led_posters_present', q: 'Are there 2 free-standing LED floor posters, one on each side of the EV?' },
     { id: 'balloon_arch_present', q: 'Is there a balloon arch over or near the EV?' },
     { id: 'balloon_colors_match_logo', q: 'Do the balloon arch colors match the client logo colors (IMAGE 2)?' },
