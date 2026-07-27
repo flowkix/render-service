@@ -1,5 +1,6 @@
 const { buildEffectsCss } = require('./effects-template')
 const { loadFontFaceCss } = require('./fonts')
+const { escapeHtml, escapeAttr } = require('./html-escape')
 
 const WORDMARK = 'SNACKETNOW&reg;'
 const WM_TAG = 'Where Brands Show Up'
@@ -39,26 +40,13 @@ function sharedHead(palette) {
 </style>`
 }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// escapeHtml only covers &/</>, insufficient for values landing inside quoted
-// CSS url()/HTML attribute contexts (photoUrls) — also escape quotes here.
-function escapeAttr(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/'/g, '&#39;').replace(/"/g, '&quot;')
-}
-
 // content.backCover.footerText may contain a literal newline for the 2-line
 // footer ("SNACKET FOODS LLC\nCharlotte, NC · snacketnow.com") — render as <br>.
 function footerHtml(footerText) {
   return escapeHtml(footerText).replace(/\n/g, '<br>')
 }
 
-function buildExteriorHtml({ content, palette, photoUrls }) {
+function buildFrontHtml({ content, palette, photoUrls }) {
   const { backCover, cover } = content
   return `<!doctype html>
 <html>
@@ -129,7 +117,7 @@ ${sharedHead(palette)}
 </html>`
 }
 
-function buildInteriorHtml({ content, palette, photoUrls }) {
+function buildBackHtml({ content, palette, photoUrls }) {
   const { interiorLeft, interiorRight } = content
   return `<!doctype html>
 <html>
@@ -216,4 +204,4 @@ ${sharedHead(palette)}
 </html>`
 }
 
-module.exports = { buildExteriorHtml, buildInteriorHtml }
+module.exports = { buildFrontHtml, buildBackHtml }
