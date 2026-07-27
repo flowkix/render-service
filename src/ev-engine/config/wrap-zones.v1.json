@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "vehicles": {
+    "nitrocafe": {
+      "angles": {},
+      "zones": {}
+    },
+    "mixobar": {
+      "angles": {},
+      "zones": {}
+    },
+    "freshblend": {
+      "angles": {},
+      "zones": {}
+    }
+  }
+}
