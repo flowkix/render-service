@@ -46,7 +46,7 @@ function footerHtml(footerText) {
   return escapeHtml(footerText).replace(/\n/g, '<br>')
 }
 
-function buildExteriorHtml({ content, palette, photoUrls }) {
+function buildFrontHtml({ content, palette, photoUrls }) {
   const { backCover, cover } = content
   return `<!doctype html>
 <html>
@@ -117,7 +117,7 @@ ${sharedHead(palette)}
 </html>`
 }
 
-function buildInteriorHtml({ content, palette, photoUrls }) {
+function buildBackHtml({ content, palette, photoUrls }) {
   const { interiorLeft, interiorRight } = content
   return `<!doctype html>
 <html>
@@ -204,4 +204,4 @@ ${sharedHead(palette)}
 </html>`
 }
 
-module.exports = { buildExteriorHtml, buildInteriorHtml }
+module.exports = { buildFrontHtml, buildBackHtml }
