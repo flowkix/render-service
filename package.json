@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test src/print-design/*.test.js"
+    "test": "node --test \"src/**/*.test.js\""
   },
   "dependencies": {
     "@fontsource/barlow": "^5.2.5",
