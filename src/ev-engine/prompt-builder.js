@@ -147,4 +147,65 @@ function buildScenePrompt({
   return { prompt: `${body}\n${notes}`.trim(), aspectRatio }
 }
 
-module.exports = { buildBrandingPrompt, buildScenePrompt, activeCorrections }
+const SIMPLE_SCENE_DEFAULTS = {
+  uniform: 'formal_chic',
+  brand_ambassador: 'female',
+  operator_gender: 'male',
+  photo_style: 'commercial_hyperrealistic',
+  aspect_ratio: '16:9',
+}
+
+/**
+ * Stage 2 (simple variant) prompt — "Object with Logo in Simple Scene Generator".
+ * No fixed brand-activation infrastructure (contrast with buildScenePrompt above).
+ * Reads `presetsConfig.param_options` (the PRODUCTION param table) read-only, for staff
+ * uniform/ambassador/photo-style text — deliberate: staff must look identical to the
+ * staged-scene capability. `simplePresetsConfig`/`simpleCorrectionsConfig` are this
+ * capability's own, independently maintained template + corrections.
+ */
+function buildSimpleScenePrompt({
+  theme,
+  venue,
+  companyName,
+  params = {},
+  presetsConfig,
+  simplePresetsConfig,
+  simpleCorrectionsConfig,
+}) {
+  if (!theme || !String(theme).trim()) throw new Error('theme is required')
+  if (!venue || !String(venue).trim()) throw new Error('venue is required')
+
+  const opts = presetsConfig.param_options
+  const merged = { ...SIMPLE_SCENE_DEFAULTS, ...params }
+
+  const resolveOption = (group, key) => {
+    if (!Object.prototype.hasOwnProperty.call(opts[group], key)) {
+      throw new Error(`Unknown ${group} "${key}". Valid: ${Object.keys(opts[group]).join(', ')}`)
+    }
+    return opts[group][key]
+  }
+
+  const uniformText = resolveOption('uniform', merged.uniform)
+  const baBlock = resolveOption('brand_ambassador', merged.brand_ambassador)
+    .replace(/\{\{uniform\}\}/g, uniformText)
+
+  const vars = {
+    companyName,
+    GLOBAL_RULES: simplePresetsConfig.global_rules_text.replace(/\{\{companyName\}\}/g, companyName),
+    venue: String(venue).trim(),
+    theme: String(theme).trim(),
+    uniform: uniformText,
+    operator_gender: resolveOption('operator_gender', merged.operator_gender),
+    brand_ambassador_block: baBlock,
+    photo_style: resolveOption('photo_style', merged.photo_style),
+    notes_block: merged.notes ? `NOTES: ${merged.notes}` : '',
+  }
+
+  const body = interpolate(simplePresetsConfig.template, vars)
+  const notes = correctionNotesBlock(activeCorrections(simpleCorrectionsConfig, 'scene'))
+  const aspectRatio = resolveOption('aspect_ratio', merged.aspect_ratio)
+
+  return { prompt: `${body}\n${notes}`.trim(), aspectRatio }
+}
+
+module.exports = { buildBrandingPrompt, buildScenePrompt, buildSimpleScenePrompt, activeCorrections }
