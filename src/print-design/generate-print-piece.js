@@ -1,47 +1,66 @@
+// src/print-design/generate-print-piece.js
 const fs = require('fs/promises')
 const path = require('path')
 const os = require('os')
 const { randomUUID } = require('crypto')
 const { renderHtmlStringToPng, buildPrintPdf } = require('./engine')
-const { buildExteriorHtml, buildInteriorHtml } = require('./bifold-html')
+const { buildFrontHtml: buildBifoldFront, buildBackHtml: buildBifoldBack } = require('./bifold-html')
+const { buildFrontHtml: buildBusinessCardFront, buildBackHtml: buildBusinessCardBack } = require('./business-card-html')
 const { uploadPdf } = require('../supabase')
 
 const DPI = 300
-const BLEED_IN = 0.065
-const TRIM_W_IN = 10.98
-const TRIM_H_IN = 8.5
-const SHEET_W_IN = TRIM_W_IN + BLEED_IN * 2
-const SHEET_H_IN = TRIM_H_IN + BLEED_IN * 2
 
-const TEMPLATE_BUILDERS = {
-  'snacket-bifold-v2': { buildExteriorHtml, buildInteriorHtml },
+const TEMPLATE_REGISTRY = {
+  'snacket-bifold-v2': {
+    buildFrontHtml: buildBifoldFront,
+    buildBackHtml: buildBifoldBack,
+    bleedIn: 0.065,
+    trimWIn: 10.98,
+    trimHIn: 8.5,
+  },
+  'snacket-business-card': {
+    buildFrontHtml: buildBusinessCardFront,
+    buildBackHtml: buildBusinessCardBack,
+    bleedIn: 0.06,
+    trimWIn: 3.50,
+    trimHIn: 2.00,
+  },
+}
+
+function computeSheetDimensions(template) {
+  return {
+    sheetWIn: template.trimWIn + template.bleedIn * 2,
+    sheetHIn: template.trimHIn + template.bleedIn * 2,
+  }
 }
 
 // input: { template_key, content, palette, photo_urls, client_id }
 // returns: { front_pdf_url, back_pdf_url }
 async function generatePrintPiece({ template_key, content, palette, photo_urls, client_id }) {
-  const builders = TEMPLATE_BUILDERS[template_key]
-  if (!builders) throw new Error(`Unknown template_key: ${template_key}`)
+  const template = TEMPLATE_REGISTRY[template_key]
+  if (!template) throw new Error(`Unknown template_key: ${template_key}`)
+
+  const { sheetWIn, sheetHIn } = computeSheetDimensions(template)
 
   const jobId = randomUUID()
   const workDir = path.join(os.tmpdir(), `print-piece-${jobId}`)
   await fs.mkdir(workDir, { recursive: true })
 
   try {
-    const exteriorHtml = builders.buildExteriorHtml({ content, palette, photoUrls: photo_urls })
-    const interiorHtml = builders.buildInteriorHtml({ content, palette, photoUrls: photo_urls })
+    const frontHtml = template.buildFrontHtml({ content, palette, photoUrls: photo_urls })
+    const backHtml = template.buildBackHtml({ content, palette, photoUrls: photo_urls })
 
-    const exteriorPng = path.join(workDir, 'exterior.png')
-    const interiorPng = path.join(workDir, 'interior.png')
+    const frontPngPath = path.join(workDir, 'front.png')
+    const backPngPath = path.join(workDir, 'back.png')
 
-    await renderHtmlStringToPng({ html: exteriorHtml, cssWidthIn: SHEET_W_IN, cssHeightIn: SHEET_H_IN, dpi: DPI, outputPngPath: exteriorPng })
-    await renderHtmlStringToPng({ html: interiorHtml, cssWidthIn: SHEET_W_IN, cssHeightIn: SHEET_H_IN, dpi: DPI, outputPngPath: interiorPng })
+    await renderHtmlStringToPng({ html: frontHtml, cssWidthIn: sheetWIn, cssHeightIn: sheetHIn, dpi: DPI, outputPngPath: frontPngPath })
+    await renderHtmlStringToPng({ html: backHtml, cssWidthIn: sheetWIn, cssHeightIn: sheetHIn, dpi: DPI, outputPngPath: backPngPath })
 
     const frontPdfPath = path.join(workDir, 'FRONT.pdf')
     const backPdfPath = path.join(workDir, 'BACK.pdf')
 
-    await buildPrintPdf({ pngPath: exteriorPng, pageWidthIn: SHEET_W_IN, pageHeightIn: SHEET_H_IN, outputPdfPath: frontPdfPath })
-    await buildPrintPdf({ pngPath: interiorPng, pageWidthIn: SHEET_W_IN, pageHeightIn: SHEET_H_IN, outputPdfPath: backPdfPath })
+    await buildPrintPdf({ pngPath: frontPngPath, pageWidthIn: sheetWIn, pageHeightIn: sheetHIn, outputPdfPath: frontPdfPath })
+    await buildPrintPdf({ pngPath: backPngPath, pageWidthIn: sheetWIn, pageHeightIn: sheetHIn, outputPdfPath: backPdfPath })
 
     const frontStoragePath = `${client_id}/${template_key}/${jobId}-FRONT.pdf`
     const backStoragePath = `${client_id}/${template_key}/${jobId}-BACK.pdf`
@@ -64,4 +83,4 @@ async function generatePrintPiece({ template_key, content, palette, photo_urls, 
   }
 }
 
-module.exports = { generatePrintPiece }
+module.exports = { generatePrintPiece, computeSheetDimensions, TEMPLATE_REGISTRY }
