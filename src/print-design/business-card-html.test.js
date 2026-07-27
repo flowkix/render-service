@@ -41,3 +41,19 @@ test('buildFrontHtml escapes unsafe characters in name/title (no raw HTML inject
   assert.ok(!html.includes('<script>alert(1)</script>'))
   assert.match(html, /&lt;script&gt;/)
 })
+
+test('buildBackHtml escapes unsafe characters in contact fields (no raw HTML injection)', () => {
+  const html = buildBackHtml({
+    content: { front: FIXTURE_CONTENT.front, back: { phone: FIXTURE_CONTENT.back.phone, email: '<script>alert(1)</script>', website: FIXTURE_CONTENT.back.website } },
+    palette: FIXTURE_PALETTE,
+    photoUrls: FIXTURE_PHOTOS,
+  })
+  assert.ok(!html.includes('<script>alert(1)</script>'))
+  assert.match(html, /&lt;script&gt;/)
+})
+
+test('buildFrontHtml renders the correct physical sheet size (3.62in x 2.12in)', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /width:\s*3\.62in/)
+  assert.match(html, /height:\s*2\.12in/)
+})
