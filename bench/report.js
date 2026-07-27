@@ -37,7 +37,7 @@ const CSS = `
 function summaryTable(run, qa) {
   const models = [...new Set(run.cases.map(c => `${c.provider}/${c.model}`))]
   const rows = []
-  for (const stage of ['branding', 'scene']) {
+  for (const stage of ['branding', 'scene', 'simple-scene']) {
     for (const m of models) {
       const cases = run.cases.filter(c => c.stage === stage && `${c.provider}/${c.model}` === m)
       if (!cases.length) continue

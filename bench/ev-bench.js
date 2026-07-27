@@ -17,6 +17,7 @@ loadBenchEnv()
 const { loadEngineConfig, BrandedEvCache } = require('../src/ev-engine')
 const { runBrandingStage } = require('../src/ev-engine/pipeline/branding-stage')
 const { runSceneStage } = require('../src/ev-engine/pipeline/scene-stage')
+const { runSimpleSceneStage } = require('../src/ev-engine/pipeline/simple-scene-stage')
 const { providerAvailable } = require('../src/ev-engine/providers')
 const { priceFor } = require('../src/ev-engine/providers/provider')
 const { getMatrix } = require('./matrix')
@@ -141,19 +142,32 @@ async function cmdRun(args) {
           providerOverride: c.candidate,
           ...configs,
         }))
-      } else {
+      } else if (c.stage === 'scene') {
         const branded = await ensureBrandedEv({ logo: c.logo, configs, cache, brandedMetaByLogo })
-        const brandedEvBuffer = branded.buffer
         record.brandedCacheKey = branded.cacheKey
         ;({ buffer, meta } = await runSceneStage({
           companyName: c.logo.companyName,
-          brandedEvBuffer,
+          brandedEvBuffer: branded.buffer,
           logoSource: c.logo.absPath,
           theme: c.theme,
           venue: c.venue,
           providerOverride: c.candidate,
           ...configs,
         }))
+      } else if (c.stage === 'simple-scene') {
+        const branded = await ensureBrandedEv({ logo: c.logo, configs, cache, brandedMetaByLogo })
+        record.brandedCacheKey = branded.cacheKey
+        ;({ buffer, meta } = await runSimpleSceneStage({
+          companyName: c.logo.companyName,
+          brandedEvBuffer: branded.buffer,
+          logoSource: c.logo.absPath,
+          theme: c.theme,
+          venue: c.venue,
+          providerOverride: c.candidate,
+          ...configs,
+        }))
+      } else {
+        throw new Error(`Unknown stage "${c.stage}"`)
       }
       const imagePath = path.join('images', `${c.caseId}.png`)
       fs.writeFileSync(path.join(runDir, imagePath), buffer)
@@ -211,13 +225,16 @@ function cmdEstimate(args) {
   let total = 0
   const byModel = {}
   for (const c of cases) {
-    const stageCfg = configs.engineConfig.stages[c.stage]
+    // simple-scene reuses the 'scene' stage's provider/model/resolution config — there is no
+    // separate engineConfig.stages['simple-scene'] entry (same generation task shape).
+    const stageKey = c.stage === 'simple-scene' ? 'scene' : c.stage
+    const stageCfg = configs.engineConfig.stages[stageKey]
     const cost = priceFor(c.candidate.model, stageCfg.resolution)
     total += cost
     byModel[c.candidate.model] = (byModel[c.candidate.model] || 0) + cost
   }
-  // Scene prerequisites: 1 branded EV per distinct logo among scene cases (default branding config)
-  const sceneLogos = [...new Set(cases.filter(c => c.stage === 'scene').map(c => c.logo.id))]
+  // Scene prerequisites: 1 branded EV per distinct logo among scene/simple-scene cases (default branding config)
+  const sceneLogos = [...new Set(cases.filter(c => c.stage === 'scene' || c.stage === 'simple-scene').map(c => c.logo.id))]
   const b = configs.engineConfig.stages.branding
   const prereq = sceneLogos.length * priceFor(b.model, b.resolution)
   const scoring = cases.length * 0.01
