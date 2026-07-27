@@ -1,5 +1,6 @@
 const { buildEffectsCss } = require('./effects-template')
 const { loadFontFaceCss } = require('./fonts')
+const { escapeHtml, escapeAttr } = require('./html-escape')
 
 const WORDMARK = 'SNACKETNOW&reg;'
 const WM_TAG = 'Where Brands Show Up'
@@ -37,19 +38,6 @@ function sharedHead(palette) {
   .tagline .lead { color: var(--gold); font-weight: 700; }
   .tagline .desc { color: #fff; font-weight: 400; line-height: 1.35; margin-top: 4px; }
 </style>`
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// escapeHtml only covers &/</>, insufficient for values landing inside quoted
-// CSS url()/HTML attribute contexts (photoUrls) — also escape quotes here.
-function escapeAttr(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/'/g, '&#39;').replace(/"/g, '&quot;')
 }
 
 // content.backCover.footerText may contain a literal newline for the 2-line
