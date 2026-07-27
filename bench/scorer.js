@@ -29,6 +29,7 @@ async function cropTapRegion(imageBuffer) {
 const HARD_GATES = {
   branding: ['ev_fidelity', 'faucets_present'],
   scene: ['ev_fidelity', 'staff_outside_ev'],
+  'simple-scene': ['ev_fidelity', 'staff_outside_ev', 'no_activation_infra_present'],
 }
 
 function rubricFor(record) {
@@ -47,24 +48,38 @@ function rubricFor(record) {
     }
     return checks
   }
-  const checks = [
-    { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
-    { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
-    { id: 'staff_guests_present', q: 'Are event guests/attendees visible somewhere in the scene near the EV activation area (staff are not shown completely isolated with zero guests anywhere in the frame)? Pose and the specific form of interaction between staff and guests do NOT matter for this check — any pose is acceptable.' },
-    { id: 'operator_fixed_uniform', q: 'Is the EV Operator wearing a charcoal-and-beige polo shirt (with a logo on the chest) and khaki pants — a distinct staff/work uniform, NOT formal wear, NOT the same style of clothing as the surrounding guests?' },
-    { id: 'ambassador_has_flyers', q: 'Is the Brand Ambassador visibly holding a small stack of flyers or promotional cards in one hand (not empty-handed)?' },
-    { id: 'led_posters_present', q: 'Are there 2 free-standing LED floor posters, one on each side of the EV?' },
-    { id: 'balloon_arch_present', q: 'Is there a balloon arch over or near the EV?' },
-    { id: 'balloon_colors_match_logo', q: 'Do the balloon arch colors match the client logo colors (IMAGE 2)?' },
-    { id: 'backdrop_with_logo', q: 'Is there a printed step-and-repeat backdrop displaying the client logo?' },
-    { id: 'red_carpet_at_backdrop', q: 'Is there a red carpet in front of the step-and-repeat backdrop?' },
-    { id: 'chauvet_fixtures_floor_mounted', q: 'Are 4 LED par light fixtures visible sitting directly on the floor (not on tripods/stands) projecting colored light upward, roughly 2 near the backdrop and 2 near the EV?' },
-    { id: 'bar_tables_present', q: 'Are white high bar-height cocktail tables with tufted-leather bar stools visible in the scene?' },
-    { id: 'ev_front_carpet_present', q: 'Is there a carpet (same material/color as the step-and-repeat carpet) placed in front of the EV, separate from the backdrop carpet?' },
-    { id: 'photographer_present', q: 'Is a professional photographer visible photographing guests near the EV or at the step-and-repeat?' },
-    { id: 'no_watermarks', q: 'Is the image free of text overlays, borders and watermarks?' },
-  ]
-  return checks
+  if (record.stage === 'scene') {
+    return [
+      { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
+      { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
+      { id: 'staff_guests_present', q: 'Are event guests/attendees visible somewhere in the scene near the EV activation area (staff are not shown completely isolated with zero guests anywhere in the frame)? Pose and the specific form of interaction between staff and guests do NOT matter for this check — any pose is acceptable.' },
+      { id: 'operator_fixed_uniform', q: 'Is the EV Operator wearing a charcoal-and-beige polo shirt (with a logo on the chest) and khaki pants — a distinct staff/work uniform, NOT formal wear, NOT the same style of clothing as the surrounding guests?' },
+      { id: 'ambassador_has_flyers', q: 'Is the Brand Ambassador visibly holding a small stack of flyers or promotional cards in one hand (not empty-handed)?' },
+      { id: 'led_posters_present', q: 'Are there 2 free-standing LED floor posters, one on each side of the EV?' },
+      { id: 'balloon_arch_present', q: 'Is there a balloon arch over or near the EV?' },
+      { id: 'balloon_colors_match_logo', q: 'Do the balloon arch colors match the client logo colors (IMAGE 2)?' },
+      { id: 'backdrop_with_logo', q: 'Is there a printed step-and-repeat backdrop displaying the client logo?' },
+      { id: 'red_carpet_at_backdrop', q: 'Is there a red carpet in front of the step-and-repeat backdrop?' },
+      { id: 'chauvet_fixtures_floor_mounted', q: 'Are 4 LED par light fixtures visible sitting directly on the floor (not on tripods/stands) projecting colored light upward, roughly 2 near the backdrop and 2 near the EV?' },
+      { id: 'bar_tables_present', q: 'Are white high bar-height cocktail tables with tufted-leather bar stools visible in the scene?' },
+      { id: 'ev_front_carpet_present', q: 'Is there a carpet (same material/color as the step-and-repeat carpet) placed in front of the EV, separate from the backdrop carpet?' },
+      { id: 'photographer_present', q: 'Is a professional photographer visible photographing guests near the EV or at the step-and-repeat?' },
+      { id: 'no_watermarks', q: 'Is the image free of text overlays, borders and watermarks?' },
+    ]
+  }
+  if (record.stage === 'simple-scene') {
+    return [
+      { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
+      { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
+      { id: 'staff_guests_present', q: 'Is at least one other person (bystander or passerby) visible somewhere in the scene near the EV — staff are not shown completely alone with nobody else anywhere in the frame? Pose and the specific form of interaction do NOT matter for this check — any pose is acceptable.' },
+      { id: 'operator_fixed_uniform', q: 'Is the EV Operator wearing a charcoal-and-beige polo shirt (with a logo on the chest) and khaki pants — a distinct staff/work uniform, NOT formal wear, NOT the same style of clothing as any bystanders?' },
+      { id: 'ambassador_has_flyers', q: 'Is the Brand Ambassador visibly holding a small stack of flyers or promotional cards in one hand (not empty-handed)?' },
+      { id: 'logo_legible', q: "Wherever the client logo appears in the scene (e.g. on the Brand Ambassador's pin or flyers), is it crisp and legible, not a smudge or distorted?" },
+      { id: 'no_activation_infra_present', q: 'Is the image FREE of ALL of the following: a balloon arch, LED floor posters, a backdrop or step-and-repeat panel, bar tables or stools, colored floor-mounted lighting fixtures, and a professional photographer? Answer pass=true ONLY if the scene contains NONE of these — this is meant to be a simple, unstaged scene with just the EV and its staff members.' },
+      { id: 'no_watermarks', q: 'Is the image free of text overlays, borders and watermarks?' },
+    ]
+  }
+  throw new Error(`rubricFor: unknown stage "${record.stage}"`)
 }
 
 async function scoreImage({ apiKey, model, imageBuffer, logoBuffer, refBuffer, record }) {
@@ -172,7 +187,7 @@ async function scoreRun(runDir, configs) {
       const imageBuffer = fs.readFileSync(path.join(runDir, record.imagePath))
       // Scene cases compare against the branded EV (stage-1 output), not the raw SNACKET reference
       let caseRef = refBuffer
-      if (record.stage === 'scene' && record.brandedCacheKey) {
+      if ((record.stage === 'scene' || record.stage === 'simple-scene') && record.brandedCacheKey) {
         const brandedFile = path.join(runDir, 'branded-cache', `${record.brandedCacheKey}.png`)
         if (fs.existsSync(brandedFile)) caseRef = fs.readFileSync(brandedFile)
       }

@@ -4,6 +4,7 @@ const fs = require('fs')
 const { loadZonesConfig } = require('./zones')
 const { runBrandingStage } = require('./pipeline/branding-stage')
 const { runSceneStage } = require('./pipeline/scene-stage')
+const { runSimpleSceneStage } = require('./pipeline/simple-scene-stage')
 const { BrandedEvCache } = require('./pipeline/cache')
 
 function loadEngineConfig() {
@@ -12,7 +13,9 @@ function loadEngineConfig() {
   const zonesConfig = loadZonesConfig(engineConfig)
   const presetsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.promptsVersion), 'utf8'))
   const correctionsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.correctionsVersion), 'utf8'))
-  return { engineConfig, zonesConfig, presetsConfig, correctionsConfig }
+  const simplePresetsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.simplePromptsVersion), 'utf8'))
+  const simpleCorrectionsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.simpleCorrectionsVersion), 'utf8'))
+  return { engineConfig, zonesConfig, presetsConfig, correctionsConfig, simplePresetsConfig, simpleCorrectionsConfig }
 }
 
 /**
@@ -25,6 +28,10 @@ async function runBranding(opts, configs = loadEngineConfig()) {
 
 async function runScene(opts, configs = loadEngineConfig()) {
   return runSceneStage({ ...opts, ...configs })
+}
+
+async function runSimpleScene(opts, configs = loadEngineConfig()) {
+  return runSimpleSceneStage({ ...opts, ...configs })
 }
 
 async function runFull(
@@ -44,4 +51,21 @@ async function runFull(
   return { branding, scene }
 }
 
-module.exports = { loadEngineConfig, runBranding, runScene, runFull, BrandedEvCache }
+async function runSimpleFull(
+  { companyName, logoSource, zones = 'all', theme, venue, params = {}, brandingOverride, sceneOverride, cache = null },
+  configs = loadEngineConfig()
+) {
+  const branding = await runBrandingStage({
+    companyName, logoSource, zones,
+    providerOverride: brandingOverride, cache,
+    ...configs,
+  })
+  const scene = await runSimpleSceneStage({
+    companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, params,
+    providerOverride: sceneOverride,
+    ...configs,
+  })
+  return { branding, scene }
+}
+
+module.exports = { loadEngineConfig, runBranding, runScene, runSimpleScene, runFull, runSimpleFull, BrandedEvCache }

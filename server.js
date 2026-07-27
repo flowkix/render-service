@@ -15,9 +15,10 @@ const { generateEvScene } = require('./src/ev-scene')
 const { generateDeckPdf } = require('./src/deck-pdf')
 const { generateCarouselSlide, generateOverlaySlide } = require('./src/slide-gen')
 const { uploadImage } = require('./src/supabase')
-const { runBranding, runFull } = require('./src/ev-engine')
+const { runBranding, runFull, runSimpleFull } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
+const { checkSimpleSceneRateLimit } = require('./src/ev-engine/scene-simple-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
@@ -615,6 +616,72 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
     res.json({ ok: true, image_url: imageUrl })
   } catch (err) {
     console.error(`[scene-v2] FAILED — ${source}:`, err.message)
+    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
+  } finally {
+    try { fs.unlinkSync(tmpPath) } catch (_) {}
+  }
+})
+
+// Authenticated, internal — same auth/rate-limit/upload pattern as /generate-ev-scene-v2,
+// for the "Object with Logo in Simple Scene Generator" capability: branded EV + staff in a
+// simple, unstaged environment, with NO brand-activation infrastructure. Uses its own rate
+// limiter instance (scene-simple-rate-limiter.js) so this capability's quota is independent
+// of /generate-ev-scene-v2's, even if a caller reuses the same `source` value for both.
+app.post('/generate-ev-scene-simple', async (req, res) => {
+  const secret = req.headers['x-render-secret']
+  if (!process.env.RENDER_SECRET) {
+    console.error('[scene-simple] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!safeCompare(secret, process.env.RENDER_SECRET)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const { source, company_name, logo_source, theme, venue } = req.body
+  if (!source || !company_name || !logo_source || !theme || !venue) {
+    return res.status(400).json({
+      ok: false,
+      error: 'source, company_name, logo_source, theme, and venue are required',
+    })
+  }
+
+  try {
+    checkSimpleSceneRateLimit({ source })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  const tmpPath = path.join(os.tmpdir(), `scene-simple_${randomUUID()}.png`)
+  try {
+    console.log(`[scene-simple] start — ${source} / ${company_name}`)
+
+    // Resolve logo_source to a Buffer ourselves — same SSRF-safe pattern as
+    // /generate-ev-scene-v2 (see that route's comment for why: fetchBuffer() in
+    // src/ev-engine/assets.js treats any non-http(s) string as a LOCAL FILE PATH).
+    let logoBuffer
+    if (/^data:/.test(logo_source)) {
+      const base64 = logo_source.split(',')[1]
+      if (!base64) throw new Error('malformed data URL')
+      logoBuffer = Buffer.from(base64, 'base64')
+    } else if (/^https?:\/\//i.test(logo_source)) {
+      logoBuffer = await fetchPublicUrlBuffer(logo_source)
+    } else {
+      throw new Error('logo_source must be a data: URL or an http(s) URL')
+    }
+
+    const { scene } = await runSimpleFull({
+      companyName: company_name,
+      logoSource: logoBuffer,
+      theme,
+      venue,
+    })
+    fs.writeFileSync(tmpPath, scene.buffer)
+    const storagePath = `scene-simple/${source}/${randomUUID()}.png`
+    const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
+    console.log(`[scene-simple] done — ${source} / ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl })
+  } catch (err) {
+    console.error(`[scene-simple] FAILED — ${source}:`, err.message)
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
     try { fs.unlinkSync(tmpPath) } catch (_) {}

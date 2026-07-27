@@ -3,6 +3,8 @@
   "zonesVersion": "zones.v1.json",
   "promptsVersion": "prompts/presets.v1.json",
   "correctionsVersion": "prompts/corrections.v1.json",
+  "simplePromptsVersion": "prompts/presets-simple.v1.json",
+  "simpleCorrectionsVersion": "prompts/corrections-simple.v1.json",
   "stages": {
     "branding": {
       "provider": "gemini",

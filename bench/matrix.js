@@ -23,7 +23,7 @@ const SCENE_CANDIDATES = [
 
 // v2 scene test cases — theme + venue combos exercising the compositional model.
 // Kept small and named (not a cross-product of independent options) so the ≤10-image
-// validation budget in the implementation plan is predictable and reproducible.
+// validation budget in each implementation plan is predictable and reproducible.
 const SCENE_TEST_CASES = [
   {
     id: 'rooftop-golden-hour',
@@ -37,6 +37,22 @@ const SCENE_TEST_CASES = [
   },
 ]
 
+// simple-scene test cases — for the "Object with Logo in Simple Scene Generator" capability
+// (no staged infrastructure). Deliberately distinct venues from SCENE_TEST_CASES to exercise
+// candid, unstaged settings (park, downtown plaza) rather than upscale event venues.
+const SIMPLE_SCENE_TEST_CASES = [
+  {
+    id: 'city-park-afternoon',
+    theme: 'casual midweek afternoon, relaxed candid mood',
+    venue: 'a public city park with mature trees and a walking path',
+  },
+  {
+    id: 'downtown-plaza-daytime',
+    theme: 'bright everyday daytime, unstaged and candid',
+    venue: 'a downtown pedestrian plaza with a few nearby storefronts',
+  },
+]
+
 function logoById(id) {
   const logo = fixtures.logos.find(l => l.id === id)
   if (!logo) throw new Error(`Unknown logo id "${id}"`)
@@ -47,7 +63,7 @@ function candidateSlug(c) {
   return `${c.provider === 'gemini' ? '' : c.provider + '-'}${c.model.replace(/[^a-z0-9.]+/gi, '-')}`
 }
 
-function buildCases({ logos, zoneSets, sceneCases, brandingCandidates, sceneCandidates }) {
+function buildCases({ logos, zoneSets, sceneCases, brandingCandidates, sceneCandidates, simpleSceneCases = [], simpleSceneCandidates = [] }) {
   const cases = []
   for (const logoId of logos) {
     const logo = logoById(logoId)
@@ -71,6 +87,18 @@ function buildCases({ logos, zoneSets, sceneCases, brandingCandidates, sceneCand
           logo,
           theme: sceneCase.theme,
           venue: sceneCase.venue,
+          candidate: cand,
+        })
+      }
+    }
+    for (const simpleCase of simpleSceneCases) {
+      for (const cand of simpleSceneCandidates) {
+        cases.push({
+          caseId: `ss_${logo.id}_${simpleCase.id}_${candidateSlug(cand)}`,
+          stage: 'simple-scene',
+          logo,
+          theme: simpleCase.theme,
+          venue: simpleCase.venue,
           candidate: cand,
         })
       }
@@ -111,6 +139,20 @@ const MATRICES = {
       brandingCandidates: [],
       sceneCandidates: [SCENE_CANDIDATES[1]],
     }),
+
+  // Object with Logo in Simple Scene Generator validation: 5 logos x 2 simple-scene-cases x
+  // 1 candidate (flash, same confirmed winner) = exactly 10 images. Same shape as
+  // sceneV2Validation above, targeting the new simple-scene stage instead.
+  simpleSceneValidation: () =>
+    buildCases({
+      logos: fixtures.logos.map(l => l.id),
+      zoneSets: [],
+      sceneCases: [],
+      brandingCandidates: [],
+      sceneCandidates: [],
+      simpleSceneCases: SIMPLE_SCENE_TEST_CASES,
+      simpleSceneCandidates: [SCENE_CANDIDATES[1]],
+    }),
 }
 
 function getMatrix(name) {
@@ -118,4 +160,4 @@ function getMatrix(name) {
   return MATRICES[name]()
 }
 
-module.exports = { getMatrix, ZONE_SETS, BRANDING_CANDIDATES, SCENE_CANDIDATES, SCENE_TEST_CASES, fixtures, logoById }
+module.exports = { getMatrix, ZONE_SETS, BRANDING_CANDIDATES, SCENE_CANDIDATES, SCENE_TEST_CASES, SIMPLE_SCENE_TEST_CASES, fixtures, logoById }

@@ -1,0 +1,41 @@
+{
+  "version": "v1",
+  "description": "Curated general-purpose corrections for the 'Object with Logo in Simple Scene Generator' capability. Independently maintained from corrections.v1.json, which also contains infra-specific rules (balloon arch, LED posters, Chauvet lights, bar stools, step-and-repeat) that do not apply here. Iteration lever: bench failure -> activate/adjust a note -> re-bench.",
+  "corrections": [
+    {
+      "id": "ev-branding-final",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Scene pass re-touches or corrupts the EV branding done in stage 1",
+      "note": "The EV branding in IMAGE A is FINAL. Do not repaint, move, add or remove any logo on the vehicle. Reproduce the vehicle pixel-faithful including all its current branding."
+    },
+    {
+      "id": "staff-outside-ev",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Staff generated inside the EV or behind a service counter",
+      "note": "NON-NEGOTIABLE: the SNACKET EV is not a food truck and has no interior service capacity. The EV Operator and Brand Ambassador must ALWAYS be standing on the ground, OUTSIDE the vehicle — never inside it, never behind a service counter, never framed within the service window opening. The service window opening shows only the vehicle's interior equipment — no person inside it, ever, regardless of venue or theme."
+    },
+    {
+      "id": "staff-guests-present",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Staff shown completely isolated with zero other people visible anywhere in the frame",
+      "note": "At least one other person (bystander, passerby) should be visible somewhere in the scene near the EV — staff should not appear completely alone with nobody else anywhere in the frame. Pose, gesture, and the specific form of interaction are NOT constrained — any natural, freely-chosen pose is acceptable."
+    },
+    {
+      "id": "no-activation-infrastructure",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Model defaults toward familiar 'brand activation event' visual tropes and adds staged infrastructure despite it not being requested",
+      "note": "CRITICAL: this is NOT a staged brand-activation event. Do NOT render a balloon arch, LED floor posters, a backdrop or step-and-repeat panel, bar tables or stools, colored floor-mounted lighting fixtures, or a professional photographer — none of these exist in this scene under any circumstances, regardless of venue or theme."
+    },
+    {
+      "id": "no-watermarks",
+      "appliesTo": "both",
+      "active": true,
+      "failureMode": "Output contains text overlays, borders or watermarks",
+      "note": "No text overlays, no borders, no watermarks, no captions anywhere in the output image."
+    }
+  ]
+}
