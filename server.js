@@ -19,6 +19,7 @@ const { runBranding, runFull, runSimpleFull } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
 const { checkSimpleSceneRateLimit } = require('./src/ev-engine/scene-simple-rate-limiter')
+const { checkGuideRateLimit } = require('./src/ev-engine/guide-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
@@ -286,6 +287,122 @@ app.options('/generate-ev-scene-public', (req, res) => {
 app.options('/clt-alliance/send-code', (req, res) => {
   applyCltAllianceCors(req, res)
   res.sendStatus(204)
+})
+
+app.options('/clt-alliance/request-guide', (req, res) => {
+  applyCltAllianceCors(req, res)
+  res.sendStatus(204)
+})
+
+// Static, pre-generated asset (see scripts/generate-clt-alliance-guide.js) — this route
+// never generates anything per-request, it only logs the lead and emails the link.
+const CLT_ALLIANCE_GUIDE_URL = 'https://noielmbqxmrnkmysqyek.supabase.co/storage/v1/object/public/clt-alliance-generator/guide/coffee-connect-guide.pdf'
+
+app.post('/clt-alliance/request-guide', async (req, res) => {
+  applyCltAllianceCors(req, res)
+  const { name, email, honeypot } = req.body
+
+  if (honeypot && String(honeypot).trim() !== '') {
+    return res.json({ ok: true })
+  }
+  if (!name || !email) {
+    return res.status(400).json({ ok: false, error: 'name and email are required' })
+  }
+  if (typeof name !== 'string' || typeof email !== 'string') {
+    return res.status(400).json({ ok: false, error: 'name and email must be text' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ ok: false, error: 'invalid email' })
+  }
+  if (name.length > 200) {
+    return res.status(400).json({ ok: false, error: 'name must be 200 characters or fewer' })
+  }
+  if (email.length > 320) {
+    return res.status(400).json({ ok: false, error: 'email must be 320 characters or fewer' })
+  }
+
+  const clientIp = req.ip || 'unknown'
+  try {
+    checkGuideRateLimit({ ip: clientIp, email })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  let snacketOs
+  try {
+    snacketOs = getSnacketOsClient()
+  } catch (err) {
+    console.error('[clt-alliance-guide] snacket-os client init FAILED:', err.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  // Thin lead — no logo/company fields here, so this goes straight into the shared
+  // Pipeline `leads` table with a dedicated source, no separate audit table (unlike
+  // the EV-preview generator's clt_alliance_leads, which stores richer per-generation
+  // data this flow doesn't have).
+  let leadId = null
+  try {
+    const { data: existingLead } = await snacketOs
+      .from('leads')
+      .select('id')
+      .eq('prospect_email', email)
+      .eq('source', 'clt_alliance_brochure')
+      .maybeSingle()
+
+    if (existingLead) {
+      leadId = existingLead.id
+      await snacketOs.from('leads').update({ company_name: name, prospect_name: name }).eq('id', leadId)
+    } else {
+      const { data: newLead, error: insertError } = await snacketOs
+        .from('leads')
+        .insert({
+          source: 'clt_alliance_brochure',
+          stage: 'deck',
+          deck_url: CLT_ALLIANCE_GUIDE_URL,
+          // leads.company_name is NOT NULL and is what Pipeline renders as each
+          // card's heading (SNACKET-OS/src/app/(dashboard)/leads/page.tsx,
+          // LeadCard.tsx) — this flow never collects a company, so the prospect's
+          // own name doubles as the card's identifying label instead of a blank
+          // or duplicate-across-every-card placeholder.
+          company_name: name,
+          prospect_name: name,
+          prospect_email: email,
+        })
+        .select('id')
+        .single()
+      if (insertError) {
+        console.error('[clt-alliance-guide] lead insert FAILED:', insertError.message)
+      } else {
+        leadId = newLead.id
+      }
+    }
+  } catch (err) {
+    console.error('[clt-alliance-guide] lead bridge FAILED:', err.message)
+  }
+
+  // Awaited — the user is actively waiting to hear their guide is on the way, so a
+  // genuine send failure must surface as an error, not a false-positive success.
+  try {
+    await axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-brochure-request', {
+      name, email, guide_url: CLT_ALLIANCE_GUIDE_URL, lead_id: leadId,
+    }, { timeout: 15000 })
+  } catch (err) {
+    console.error('[clt-alliance-guide] email send FAILED:', err.message)
+
+    // Real prospects hit this on the public microsite and have no reason to ever tell
+    // us — mirrors the /generate-ev-scene-public failure-alert pattern (spec C3.5).
+    // Fire-and-forget: never let a slow/failed alert affect the user-facing error response.
+    axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-failure-alert', {
+      name, email, error_message: err.message.slice(0, 2000), lead_id: leadId,
+      occurred_at: new Date().toISOString(),
+    }, { timeout: 10000 }).catch(alertErr => {
+      console.error('[clt-alliance-guide] failure alert FAILED:', alertErr.message)
+    })
+
+    return res.status(500).json({ ok: false, error: 'Could not send your guide — please try again.' })
+  }
+
+  res.json({ ok: true })
 })
 
 // Sends a one-time verification code to the prospect's own email BEFORE any generation
