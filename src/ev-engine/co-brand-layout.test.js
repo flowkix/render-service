@@ -15,6 +15,21 @@ test('combineZoneAssets throws on an unknown shape, listing the 3 valid shapes',
   )
 })
 
+test('combineZoneAssets throws when given 0 assets', async () => {
+  await assert.rejects(
+    () => combineZoneAssets({ shape: 'circle', width: 10, height: 10, assetBuffers: [] }),
+    /assetBuffers must contain 1 or 2 buffers, got 0/
+  )
+})
+
+test('combineZoneAssets throws when given more than 2 assets', async () => {
+  const red = await solidPng(10, 10, { r: 255, g: 0, b: 0, alpha: 255 })
+  await assert.rejects(
+    () => combineZoneAssets({ shape: 'circle', width: 10, height: 10, assetBuffers: [red, red, red] }),
+    /assetBuffers must contain 1 or 2 buffers, got 3/
+  )
+})
+
 test('combineZoneAssets with a single asset resizes it to fit the zone, centered', async () => {
   const red = await solidPng(50, 50, { r: 255, g: 0, b: 0, alpha: 255 })
   const result = await combineZoneAssets({ shape: 'circle', width: 100, height: 100, assetBuffers: [red] })

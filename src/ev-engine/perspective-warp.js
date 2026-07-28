@@ -33,7 +33,9 @@ function invertMatrix([a, b, c, d, e, f, g, h]) {
   const D = -(b - c * h), E = a - c * g, F = -(a * h - b * g)
   const G = b * f - c * e, H = -(a * f - c * d), I = a * e - b * d
   const det = a * A + b * B + c * C
-  if (det === 0) throw new Error('perspective-warp: degenerate quad, matrix not invertible')
+  if (det === 0 || Number.isNaN(det)) {
+    throw new Error('perspective-warp: degenerate quad, matrix not invertible')
+  }
   return [A / det, D / det, G / det, B / det, E / det, H / det, C / det, F / det, I / det]
 }
 

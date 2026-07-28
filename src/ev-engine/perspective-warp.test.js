@@ -23,6 +23,12 @@ test('warpImageToQuad with an undistorted rectangle fills the bounding box with 
   )
 })
 
+test('warpImageToQuad throws on a degenerate (collinear) quad instead of silently returning garbage', () => {
+  const src = solidRgba(10, 10, [1, 2, 3, 255])
+  const collinear = [[0, 0], [10, 0], [20, 0], [30, 0]] // all 4 points on the same line
+  assert.throws(() => warpImageToQuad(src, collinear), /degenerate quad/)
+})
+
 test('warpImageToQuad with a trapezoid restricts the fill to the quad, not the whole bounding box', () => {
   const src = solidRgba(100, 100, [30, 144, 255, 255])
   const cornerPoints = [[0, 0], [100, 20], [100, 80], [0, 100]] // narrows on the right side

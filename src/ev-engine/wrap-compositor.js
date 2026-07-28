@@ -50,6 +50,7 @@ async function compositeZoneOntoBase({
   const grayCrop = await sharp(baseImageBuffer)
     .extract({ left, top, width: warped.width, height: warped.height })
     .grayscale()
+    .removeAlpha()
     .ensureAlpha(shadowOpacity)
     .png()
     .toBuffer()

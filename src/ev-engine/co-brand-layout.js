@@ -45,6 +45,9 @@ async function combineZoneAssets({ shape, width, height, assetBuffers }) {
   if (!VALID_SHAPES.includes(shape)) {
     throw new Error(`combineZoneAssets: unknown shape "${shape}". Valid shapes: ${VALID_SHAPES.join(', ')}`)
   }
+  if (!Array.isArray(assetBuffers) || assetBuffers.length < 1 || assetBuffers.length > 2) {
+    throw new Error(`combineZoneAssets: assetBuffers must contain 1 or 2 buffers, got ${Array.isArray(assetBuffers) ? assetBuffers.length : typeof assetBuffers}`)
+  }
   if (assetBuffers.length === 1) {
     return resizeContain(assetBuffers[0], width, height)
   }
