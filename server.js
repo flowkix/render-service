@@ -25,6 +25,9 @@ const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engin
 const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
 const { generatePrintPiece } = require('./src/print-design/generate-print-piece')
+const { loadWrapZonesConfig } = require('./src/ev-engine/wrap-zones')
+const { renderWrapZones } = require('./src/ev-engine/wrap-render')
+const { uploadEvWrapRender } = require('./src/ev-engine/wrap-storage')
 
 const app = express()
 // Exactly one trusted reverse proxy in front of this service (Railway's edge). Railway
@@ -872,6 +875,68 @@ app.post('/generate-ev-branding', async (req, res) => {
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
     try { fs.unlinkSync(tmpPath) } catch (_) {}
+  }
+})
+
+// Authenticated, internal — same X-Render-Secret pattern as /generate-ev-scene-v2. Composites
+// N 'sharp'-mode zones (already-calibrated cornerPoints from wrap-zones.v1.json) onto one base
+// vehicle photo in a single call. Rejects the whole request if any requested zone doesn't
+// exist, isn't visible in the given angle, or is compositingMode 'generative' — the caller
+// (HUB's compose route) is responsible for routing generative zones to the separate Edge
+// Function instead, never mixing the two in one call here.
+app.post('/generate-ev-wrap-sharp', async (req, res) => {
+  const secret = req.headers['x-render-secret']
+  if (!process.env.RENDER_SECRET) {
+    console.error('[wrap-sharp] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!safeCompare(secret, process.env.RENDER_SECRET)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const { lead_id, vehicle_slug, angle, base_image_url, zones } = req.body
+  if (!lead_id || !vehicle_slug || !angle || !base_image_url || !Array.isArray(zones) || zones.length === 0) {
+    return res.status(400).json({
+      ok: false,
+      error: 'lead_id, vehicle_slug, angle, base_image_url, and a non-empty zones[] array are required',
+    })
+  }
+  for (const z of zones) {
+    if (!z || typeof z.zone_id !== 'string' || !Array.isArray(z.asset_urls) || z.asset_urls.length < 1 || z.asset_urls.length > 2) {
+      return res.status(400).json({ ok: false, error: 'each zones[] entry needs zone_id and asset_urls (1 or 2 http(s) URLs)' })
+    }
+  }
+
+  try {
+    console.log(`[wrap-sharp] start — lead=${lead_id} vehicle=${vehicle_slug} angle=${angle} zones=${zones.length}`)
+    const wrapZonesConfig = loadWrapZonesConfig()
+
+    // Resolved via the same SSRF-safe fetcher as /generate-ev-scene-v2 above — this route is
+    // authenticated but still accepts arbitrary caller-supplied URLs (asset_urls, base_image_url).
+    const baseImageBuffer = await fetchPublicUrlBuffer(base_image_url)
+    const zoneInputs = []
+    for (const z of zones) {
+      const assetBuffers = []
+      for (const url of z.asset_urls) {
+        assetBuffers.push(await fetchPublicUrlBuffer(url))
+      }
+      zoneInputs.push({ zoneId: z.zone_id, assetBuffers })
+    }
+
+    const { buffer, appliedZoneIds } = await renderWrapZones({
+      vehicleSlug: vehicle_slug,
+      angle,
+      baseImageBuffer,
+      zoneInputs,
+      wrapZonesConfig,
+    })
+
+    const storagePath = await uploadEvWrapRender(buffer, lead_id, vehicle_slug, angle)
+    console.log(`[wrap-sharp] done — lead=${lead_id} zones=${appliedZoneIds.join(',')}`)
+    res.json({ ok: true, image_url: storagePath, applied_zone_ids: appliedZoneIds })
+  } catch (err) {
+    console.error(`[wrap-sharp] FAILED — lead=${lead_id}:`, err.message)
+    res.status(500).json({ ok: false, error: err.message })
   }
 })
 
