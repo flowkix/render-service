@@ -93,6 +93,36 @@ test('renderWrapZones throws when the zone has no cornerPoints calibrated for th
   )
 })
 
+test('renderWrapZones throws for an unknown zone id on a known vehicle', async () => {
+  const baseImageBuffer = await makeBase()
+  const logoBuffer = await makeLogo({ r: 100, g: 100, b: 100, alpha: 255 })
+  await assert.rejects(
+    renderWrapZones({
+      vehicleSlug: 'testvan',
+      angle: 'front',
+      baseImageBuffer,
+      zoneInputs: [{ zoneId: 'not_a_real_zone', assetBuffers: [logoBuffer] }],
+      wrapZonesConfig: FIXTURE_CONFIG,
+    }),
+    /Unknown zone/
+  )
+})
+
+test('renderWrapZones throws when the zone is not visible in the requested angle', async () => {
+  const baseImageBuffer = await makeBase()
+  const logoBuffer = await makeLogo({ r: 0, g: 200, b: 0, alpha: 255 })
+  await assert.rejects(
+    renderWrapZones({
+      vehicleSlug: 'testvan',
+      angle: 'rear',
+      baseImageBuffer,
+      zoneInputs: [{ zoneId: 'zone_a', assetBuffers: [logoBuffer] }],
+      wrapZonesConfig: FIXTURE_CONFIG,
+    }),
+    /not visible in angle/
+  )
+})
+
 test('renderWrapZones chains two zones — both get applied, second on top of the first result', async () => {
   const baseImageBuffer = await makeBase()
   const logoA = await makeLogo({ r: 0, g: 200, b: 0, alpha: 255 })
