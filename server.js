@@ -940,6 +940,32 @@ app.post('/generate-ev-wrap-sharp', async (req, res) => {
   }
 })
 
+// Authenticated, internal — read-only exposure of wrap-zones.v1.json's per-vehicle zone
+// catalog (same X-Render-Secret pattern). HUB's wrap-catalog route (Task 8) calls this to
+// enrich each wrap_catalog_items row with its zone definitions, and the compose route
+// (Task 13) calls it to know each selected zone's compositingMode (sharp vs generative).
+app.get('/ev-wrap-zones/:vehicleSlug', (req, res) => {
+  const secret = req.headers['x-render-secret']
+  if (!process.env.RENDER_SECRET) {
+    console.error('[ev-wrap-zones] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!safeCompare(secret, process.env.RENDER_SECRET)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+  try {
+    const wrapZonesConfig = loadWrapZonesConfig()
+    const vehicle = wrapZonesConfig.vehicles[req.params.vehicleSlug]
+    if (!vehicle) {
+      return res.status(404).json({ ok: false, error: `Unknown vehicle "${req.params.vehicleSlug}"` })
+    }
+    res.json({ ok: true, vehicle_slug: req.params.vehicleSlug, angles: vehicle.angles || {}, zones: vehicle.zones || {} })
+  } catch (err) {
+    console.error('[ev-wrap-zones] FAILED:', err.message)
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 app.post('/generate-pdf', async (req, res) => {
   const { deck_url, prospect_id } = req.body
   if (!deck_url || !prospect_id) {
