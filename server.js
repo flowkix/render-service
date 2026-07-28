@@ -19,6 +19,7 @@ const { runBranding, runFull, runSimpleFull } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
 const { checkSimpleSceneRateLimit } = require('./src/ev-engine/scene-simple-rate-limiter')
+const { checkBrandingRateLimit } = require('./src/ev-engine/branding-rate-limiter')
 const { checkGuideRateLimit } = require('./src/ev-engine/guide-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
@@ -799,6 +800,75 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
     res.json({ ok: true, image_url: imageUrl })
   } catch (err) {
     console.error(`[scene-simple] FAILED — ${source}:`, err.message)
+    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
+  } finally {
+    try { fs.unlinkSync(tmpPath) } catch (_) {}
+  }
+})
+
+// Standalone route for the "Object with Logo Generator" capability — logo applied
+// to the EV, white background, no scene. Previously only reachable embedded inside
+// /generate-ev-scene-public (CLT Alliance's public route); this gives it its own
+// entry point, symmetric with /generate-ev-scene-v2 and /generate-ev-scene-simple,
+// so no future change to CLT Alliance's route can accidentally affect this
+// capability's availability. Calls the existing, unmodified runBranding — no engine
+// code changes.
+app.post('/generate-ev-branding', async (req, res) => {
+  const secret = req.headers['x-render-secret']
+  if (!process.env.RENDER_SECRET) {
+    console.error('[branding] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!safeCompare(secret, process.env.RENDER_SECRET)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const { source, company_name, logo_source } = req.body
+  if (!source || !company_name || !logo_source) {
+    return res.status(400).json({
+      ok: false,
+      error: 'source, company_name, and logo_source are required',
+    })
+  }
+
+  try {
+    checkBrandingRateLimit({ source })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  const tmpPath = path.join(os.tmpdir(), `branding_${randomUUID()}.png`)
+  try {
+    console.log(`[branding] start — ${source} / ${company_name}`)
+
+    let logoBuffer
+    if (/^data:/.test(logo_source)) {
+      const base64 = logo_source.split(',')[1]
+      if (!base64) throw new Error('malformed data URL')
+      logoBuffer = Buffer.from(base64, 'base64')
+    } else if (/^https?:\/\//i.test(logo_source)) {
+      logoBuffer = await fetchPublicUrlBuffer(logo_source)
+    } else {
+      throw new Error('logo_source must be a data: URL or an http(s) URL')
+    }
+
+    const { buffer } = await runBranding({
+      companyName: company_name,
+      logoSource: logoBuffer,
+      zones: 'all',
+    })
+
+    // Gemini's returned buffer isn't guaranteed to actually be PNG-encoded — normalize
+    // before upload, same as /generate-ev-scene-public does for this same underlying
+    // runBrandingStage output.
+    const pngBuffer = await sharp(buffer).png().toBuffer()
+    fs.writeFileSync(tmpPath, pngBuffer)
+    const storagePath = `branding/${source}/${randomUUID()}.png`
+    const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
+    console.log(`[branding] done — ${source} / ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl })
+  } catch (err) {
+    console.error(`[branding] FAILED — ${source}:`, err.message)
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
     try { fs.unlinkSync(tmpPath) } catch (_) {}
