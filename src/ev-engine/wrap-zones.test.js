@@ -15,11 +15,25 @@ const FIXTURE_CONFIG = {
   },
 }
 
-test('loadWrapZonesConfig loads the real (still-empty) config without throwing, and resolveWrapZones on a vehicle with no zones returns empty selections', () => {
+test('loadWrapZonesConfig loads the real calibrated config without throwing, and resolveWrapZones on an unknown angle selects nothing (all 13 real zones fall through to unselected)', () => {
   const config = loadWrapZonesConfig()
   assert.equal(config.version, 'v1')
+  // Real zone data was calibrated 2026-07-28 from the user's hand-drawn area sketches — all
+  // 3 vehicles now have real zones under the single 'assembled' angle (see this plan's memory
+  // note on why one combined photo per vehicle was chosen over 3 separate crops, not 3 real
+  // angles). Querying a non-real angle like 'rear_3q' correctly selects none of them — but
+  // unlike Phase 1's still-empty catalog, `unselected` is no longer empty either: all 13 real
+  // zone ids exist and are reported as not-visible-in-this-angle, not simply absent.
   const result = resolveWrapZones('nitrocafe', 'rear_3q', undefined, config)
-  assert.deepEqual(result, { selected: [], unselected: [] })
+  assert.deepEqual(result.selected, [])
+  assert.equal(result.unselected.length, 13)
+})
+
+test('resolveWrapZones on the real nitrocafe config resolves all 13 zones under the assembled angle', () => {
+  const config = loadWrapZonesConfig()
+  const result = resolveWrapZones('nitrocafe', 'assembled', 'all', config)
+  assert.equal(result.selected.length, 13)
+  assert.deepEqual(result.unselected, [])
 })
 
 test('resolveWrapZones filters zones by visibleInAngles for the requested angle', () => {
