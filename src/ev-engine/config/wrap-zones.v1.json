@@ -1,0 +1,1122 @@
+{
+  "version": "v1",
+  "vehicles": {
+    "nitrocafe": {
+      "angles": {},
+      "zones": {
+        "wrap_zone_1": {
+          "label": "Left Hood Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                114,
+                700
+              ],
+              [
+                665,
+                705
+              ],
+              [
+                665,
+                880
+              ],
+              [
+                114,
+                875
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_2": {
+          "label": "Left Counter Trim Strip",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                194,
+                903
+              ],
+              [
+                687,
+                903
+              ],
+              [
+                687,
+                943
+              ],
+              [
+                194,
+                943
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_3": {
+          "label": "Left Counter Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                221,
+                963
+              ],
+              [
+                467,
+                963
+              ],
+              [
+                467,
+                1129
+              ],
+              [
+                221,
+                1129
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_4": {
+          "label": "Left Counter Narrow Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_portrait",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                486,
+                955
+              ],
+              [
+                563,
+                955
+              ],
+              [
+                563,
+                1138
+              ],
+              [
+                486,
+                1138
+              ]
+            ]
+          },
+          "preferredAssetVariant": "vertical"
+        },
+        "wrap_zone_5": {
+          "label": "Left Bottom Band",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                175,
+                1171
+              ],
+              [
+                709,
+                1171
+              ],
+              [
+                709,
+                1254
+              ],
+              [
+                175,
+                1254
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_6": {
+          "label": "Left Cab Door",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                823,
+                1128
+              ],
+              [
+                1006,
+                1128
+              ],
+              [
+                1006,
+                1254
+              ],
+              [
+                823,
+                1254
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_7": {
+          "label": "Rear Hatch Upper Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1296,
+                700
+              ],
+              [
+                1627,
+                705
+              ],
+              [
+                1627,
+                885
+              ],
+              [
+                1296,
+                880
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_8": {
+          "label": "Rear Interior Large Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_portrait",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1310,
+                928
+              ],
+              [
+                1502,
+                928
+              ],
+              [
+                1502,
+                1193
+              ],
+              [
+                1310,
+                1193
+              ]
+            ]
+          },
+          "preferredAssetVariant": "vertical"
+        },
+        "wrap_zone_9": {
+          "label": "Rear Interior Narrow Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_portrait",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1539,
+                1061
+              ],
+              [
+                1600,
+                1061
+              ],
+              [
+                1600,
+                1193
+              ],
+              [
+                1539,
+                1193
+              ]
+            ]
+          },
+          "preferredAssetVariant": "vertical"
+        },
+        "wrap_zone_10": {
+          "label": "Right Cab Door",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1878,
+                1111
+              ],
+              [
+                2056,
+                1111
+              ],
+              [
+                2056,
+                1233
+              ],
+              [
+                1878,
+                1233
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_11": {
+          "label": "Right Hood Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2137,
+                705
+              ],
+              [
+                2672,
+                710
+              ],
+              [
+                2672,
+                885
+              ],
+              [
+                2137,
+                880
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_12": {
+          "label": "Right Counter Trim Strip",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2182,
+                913
+              ],
+              [
+                2686,
+                913
+              ],
+              [
+                2686,
+                952
+              ],
+              [
+                2182,
+                952
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_13": {
+          "label": "Right Bottom Band",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2160,
+                1191
+              ],
+              [
+                2683,
+                1191
+              ],
+              [
+                2683,
+                1310
+              ],
+              [
+                2160,
+                1310
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        }
+      }
+    },
+    "mixobar": {
+      "angles": {},
+      "zones": {
+        "wrap_zone_1": {
+          "label": "Left Hood Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                145,
+                710
+              ],
+              [
+                668,
+                715
+              ],
+              [
+                668,
+                905
+              ],
+              [
+                145,
+                900
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_2": {
+          "label": "Left Counter Trim Strip",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                175,
+                927
+              ],
+              [
+                704,
+                927
+              ],
+              [
+                704,
+                962
+              ],
+              [
+                175,
+                962
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_3": {
+          "label": "Left Small Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_portrait",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                212,
+                1053
+              ],
+              [
+                278,
+                1053
+              ],
+              [
+                278,
+                1182
+              ],
+              [
+                212,
+                1182
+              ]
+            ]
+          },
+          "preferredAssetVariant": "vertical"
+        },
+        "wrap_zone_4": {
+          "label": "Left Fridge Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                351,
+                979
+              ],
+              [
+                668,
+                979
+              ],
+              [
+                668,
+                1193
+              ],
+              [
+                351,
+                1193
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_5": {
+          "label": "Left Bottom Band",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                157,
+                1210
+              ],
+              [
+                721,
+                1210
+              ],
+              [
+                721,
+                1293
+              ],
+              [
+                157,
+                1293
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_6": {
+          "label": "Left Cab Door",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                823,
+                1160
+              ],
+              [
+                1030,
+                1160
+              ],
+              [
+                1030,
+                1302
+              ],
+              [
+                823,
+                1302
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_7": {
+          "label": "Rear Hatch Upper Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1319,
+                710
+              ],
+              [
+                1660,
+                715
+              ],
+              [
+                1660,
+                950
+              ],
+              [
+                1319,
+                945
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_8": {
+          "label": "Rear Trim Strip",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1334,
+                994
+              ],
+              [
+                1633,
+                994
+              ],
+              [
+                1633,
+                1032
+              ],
+              [
+                1334,
+                1032
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_9": {
+          "label": "Rear Interior Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1407,
+                1053
+              ],
+              [
+                1627,
+                1053
+              ],
+              [
+                1627,
+                1265
+              ],
+              [
+                1407,
+                1265
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_10": {
+          "label": "Right Cab Door",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1951,
+                1178
+              ],
+              [
+                2141,
+                1178
+              ],
+              [
+                2141,
+                1309
+              ],
+              [
+                1951,
+                1309
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_11": {
+          "label": "Right Hood Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2280,
+                775
+              ],
+              [
+                2764,
+                780
+              ],
+              [
+                2764,
+                950
+              ],
+              [
+                2280,
+                945
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_12": {
+          "label": "Right Trim Strip",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2269,
+                976
+              ],
+              [
+                2734,
+                976
+              ],
+              [
+                2734,
+                1014
+              ],
+              [
+                2269,
+                1014
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_13": {
+          "label": "Right Bottom Band",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2241,
+                1244
+              ],
+              [
+                2749,
+                1244
+              ],
+              [
+                2749,
+                1334
+              ],
+              [
+                2241,
+                1334
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        }
+      }
+    },
+    "freshblend": {
+      "angles": {},
+      "zones": {
+        "wrap_zone_1": {
+          "label": "Left Hood Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                235,
+                720
+              ],
+              [
+                814,
+                760
+              ],
+              [
+                814,
+                885
+              ],
+              [
+                235,
+                860
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_2": {
+          "label": "Left Counter Trim Strip",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                235,
+                907
+              ],
+              [
+                804,
+                907
+              ],
+              [
+                804,
+                961
+              ],
+              [
+                235,
+                961
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_3": {
+          "label": "Left Bottom Band",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                168,
+                1187
+              ],
+              [
+                816,
+                1187
+              ],
+              [
+                816,
+                1312
+              ],
+              [
+                168,
+                1312
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_4": {
+          "label": "Left Cab Door",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                918,
+                1109
+              ],
+              [
+                1101,
+                1109
+              ],
+              [
+                1101,
+                1235
+              ],
+              [
+                918,
+                1235
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_5": {
+          "label": "Rear Hatch Upper Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1296,
+                700
+              ],
+              [
+                1627,
+                705
+              ],
+              [
+                1627,
+                905
+              ],
+              [
+                1296,
+                900
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_6": {
+          "label": "Rear Small Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_portrait",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1325,
+                1105
+              ],
+              [
+                1395,
+                1105
+              ],
+              [
+                1395,
+                1235
+              ],
+              [
+                1325,
+                1235
+              ]
+            ]
+          },
+          "preferredAssetVariant": "vertical"
+        },
+        "wrap_zone_7": {
+          "label": "Rear Interior Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_portrait",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1497,
+                975
+              ],
+              [
+                1602,
+                975
+              ],
+              [
+                1602,
+                1235
+              ],
+              [
+                1497,
+                1235
+              ]
+            ]
+          },
+          "preferredAssetVariant": "vertical"
+        },
+        "wrap_zone_8": {
+          "label": "Right Cab Door",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                1933,
+                1150
+              ],
+              [
+                2137,
+                1150
+              ],
+              [
+                2137,
+                1290
+              ],
+              [
+                1933,
+                1290
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_9": {
+          "label": "Right Hood Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2275,
+                760
+              ],
+              [
+                2767,
+                765
+              ],
+              [
+                2767,
+                905
+              ],
+              [
+                2275,
+                900
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_10": {
+          "label": "Right Counter Trim Strip",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2275,
+                938
+              ],
+              [
+                2728,
+                938
+              ],
+              [
+                2728,
+                973
+              ],
+              [
+                2275,
+                973
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        },
+        "wrap_zone_11": {
+          "label": "Right Interior Narrow Panel",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_portrait",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2634,
+                988
+              ],
+              [
+                2728,
+                988
+              ],
+              [
+                2728,
+                1175
+              ],
+              [
+                2634,
+                1175
+              ]
+            ]
+          },
+          "preferredAssetVariant": "vertical"
+        },
+        "wrap_zone_12": {
+          "label": "Right Bottom Band",
+          "visibleInAngles": [
+            "assembled"
+          ],
+          "shape": "rect_landscape",
+          "compositingMode": "sharp",
+          "cornerPoints": {
+            "assembled": [
+              [
+                2238,
+                1205
+              ],
+              [
+                2751,
+                1205
+              ],
+              [
+                2751,
+                1290
+              ],
+              [
+                2238,
+                1290
+              ]
+            ]
+          },
+          "preferredAssetVariant": "horizontal"
+        }
+      }
+    }
+  }
+}
