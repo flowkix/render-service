@@ -6,6 +6,7 @@ const { randomUUID } = require('crypto')
 const { renderHtmlStringToPng, buildPrintPdf } = require('./engine')
 const { buildFrontHtml: buildBifoldFront, buildBackHtml: buildBifoldBack } = require('./bifold-html')
 const { buildFrontHtml: buildBusinessCardFront, buildBackHtml: buildBusinessCardBack } = require('./business-card-html')
+const { buildFrontHtml: buildBusinessCardV2Front, buildBackHtml: buildBusinessCardV2Back } = require('./business-card-v2-html')
 const { uploadPdf } = require('../supabase')
 
 const DPI = 300
@@ -21,6 +22,13 @@ const TEMPLATE_REGISTRY = {
   'snacket-business-card': {
     buildFrontHtml: buildBusinessCardFront,
     buildBackHtml: buildBusinessCardBack,
+    bleedIn: 0.06,
+    trimWIn: 3.50,
+    trimHIn: 2.00,
+  },
+  'snacket-business-card-v2': {
+    buildFrontHtml: buildBusinessCardV2Front,
+    buildBackHtml: buildBusinessCardV2Back,
     bleedIn: 0.06,
     trimWIn: 3.50,
     trimHIn: 2.00,
