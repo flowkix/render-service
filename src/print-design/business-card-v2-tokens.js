@@ -13,9 +13,10 @@ function isLightBackground(hex) {
 function resolveTokens(palette) {
   const light = isLightBackground(palette.backgroundHex)
   // Both hand-built CLI variants use palette.gold for every divider/rule/
-  // kicker accent. If the user picks gold itself as the background, that
-  // accent would render gold-on-gold — fall back to charcoal in that one case.
-  const dividerColor = palette.backgroundHex === palette.gold ? 'var(--charcoal)' : 'var(--gold)'
+  // kicker/title accent. If the user picks gold itself as the background,
+  // those accents would render gold-on-gold — fall back to charcoal in that
+  // one case, for every one of them (not just the divider).
+  const goldAccentColor = palette.backgroundHex === palette.gold ? 'var(--charcoal)' : 'var(--gold)'
 
   return {
     light,
@@ -28,7 +29,8 @@ function resolveTokens(palette) {
     badgeStroke: light ? '#fff' : '#363C43',
     hasLogoPlate: !light,
     hasPhotoWindow: !light,
-    dividerColor,
+    dividerColor: goldAccentColor,
+    titleColor: goldAccentColor,
   }
 }
 

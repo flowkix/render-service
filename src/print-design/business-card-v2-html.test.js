@@ -66,6 +66,14 @@ test('buildFrontHtml renders the correct physical sheet size (3.62in x 2.12in)',
   assert.match(html, /height:\s*2\.12in/)
 })
 
+test('buildFrontHtml does not render the title in gold-on-gold when the background itself is gold', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.gold }, photoUrls: FIXTURE_PHOTOS })
+  const titleRuleMatch = html.match(/\.title \{[^}]*\}/)
+  assert.ok(titleRuleMatch, 'expected a .title CSS rule in the output')
+  assert.ok(!titleRuleMatch[0].includes('var(--gold)'), `.title should not be var(--gold) when background is gold, got: ${titleRuleMatch[0]}`)
+  assert.match(titleRuleMatch[0], /var\(--charcoal\)/)
+})
+
 test('buildBackHtml renders the mixobar photo mirrored and the QR code, no photo-plate on a light background', () => {
   const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige }, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /mixobar\.png/)

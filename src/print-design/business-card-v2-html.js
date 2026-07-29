@@ -50,7 +50,7 @@ ${logoPlateCss}  .logo { width: ${t.hasLogoPlate ? '0.76in' : '0.8in'}; height: 
   .name { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 9.6pt;
     color: ${t.primaryTextColor}; letter-spacing: 0.15pt; text-transform: uppercase; }
   .title { font-family: 'Barlow', sans-serif; font-weight: 700; font-size: 4.8pt; letter-spacing: 1pt;
-    color: var(--gold); margin-top: 0.02in; margin-bottom: 0.08in; text-transform: uppercase; }
+    color: ${t.titleColor}; margin-top: 0.02in; margin-bottom: 0.08in; text-transform: uppercase; }
   .row { display: flex; align-items: center; gap: 0.0667in; margin-top: 0.0467in; }
   .badge { width: 0.1333in; height: 0.1333in; border-radius: 50%; background: ${t.badgeFill};
     display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

@@ -51,3 +51,13 @@ test('resolveTokens does not fall back the divider for any other background', ()
   const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.green })
   assert.equal(t.dividerColor, 'var(--gold)')
 })
+
+test('resolveTokens falls the title color back to charcoal when the chosen background equals palette.gold (same collision as the divider)', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.gold })
+  assert.equal(t.titleColor, 'var(--charcoal)')
+})
+
+test('resolveTokens keeps the title color gold for any other background', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.beige })
+  assert.equal(t.titleColor, 'var(--gold)')
+})
