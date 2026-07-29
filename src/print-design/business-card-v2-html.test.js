@@ -74,6 +74,22 @@ test('buildFrontHtml does not render the title in gold-on-gold when the backgrou
   assert.match(titleRuleMatch[0], /var\(--charcoal\)/)
 })
 
+test('buildFrontHtml does not render the tag "g" span in green-on-green when the background itself is green', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.green }, photoUrls: FIXTURE_PHOTOS })
+  const tagGRuleMatch = html.match(/\.tag \.g \{[^}]*\}/)
+  assert.ok(tagGRuleMatch, 'expected a .tag .g CSS rule in the output')
+  assert.ok(!tagGRuleMatch[0].includes('var(--green)'), `.tag .g should not be var(--green) when background is green, got: ${tagGRuleMatch[0]}`)
+  assert.match(tagGRuleMatch[0], /var\(--charcoal\)/)
+})
+
+test('buildBackHtml does not render the h1 "g" span in green-on-green when the background itself is green', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.green }, photoUrls: FIXTURE_PHOTOS })
+  const h1GRuleMatch = html.match(/\.h1 \.g \{[^}]*\}/)
+  assert.ok(h1GRuleMatch, 'expected a .h1 .g CSS rule in the output')
+  assert.ok(!h1GRuleMatch[0].includes('var(--green)'), `.h1 .g should not be var(--green) when background is green, got: ${h1GRuleMatch[0]}`)
+  assert.match(h1GRuleMatch[0], /var\(--charcoal\)/)
+})
+
 test('buildBackHtml renders the mixobar photo mirrored and the QR code, no photo-plate on a light background', () => {
   const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige }, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /mixobar\.png/)

@@ -44,7 +44,7 @@ ${logoPlateCss}  .logo { width: ${t.hasLogoPlate ? '0.76in' : '0.8in'}; height: 
   .tag { margin-top: 0.0667in; font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
     font-size: 5.5pt; line-height: 1.22; letter-spacing: 0.15pt; color: ${t.primaryTextColor}; }
   .tag span { display: block; }
-  .tag .g { color: var(--green); }
+  .tag .g { color: ${t.greenAccentColor}; }
   .div { width: 0.01in; align-self: stretch; background: ${t.dividerColor}; margin: 0 0.12in; }
   .right { flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .name { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 9.6pt;
@@ -124,7 +124,7 @@ ${photoPlateCss}  .photo { position: absolute; ${photoRect}
   .h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 12.5pt;
     line-height: 1.02; letter-spacing: 0.15pt; color: ${t.primaryTextColor}; text-transform: uppercase; }
   .h1 span { display: block; }
-  .h1 .g { color: var(--green); }
+  .h1 .g { color: ${t.greenAccentColor}; }
   .rule { width: 0.4667in; height: 0.01in; background: ${t.dividerColor}; margin: 0.0667in 0; }
   .sub { font-family: 'Barlow', sans-serif; font-weight: 700; font-size: 4pt; letter-spacing: 0.7pt;
     color: ${t.subColor}; line-height: 1.4; text-transform: uppercase; }

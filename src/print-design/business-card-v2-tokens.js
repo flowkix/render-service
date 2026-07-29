@@ -17,6 +17,11 @@ function resolveTokens(palette) {
   // those accents would render gold-on-gold — fall back to charcoal in that
   // one case, for every one of them (not just the divider).
   const goldAccentColor = palette.backgroundHex === palette.gold ? 'var(--charcoal)' : 'var(--gold)'
+  // Same collision, mirrored for the other hardcoded brand accent: the "g"
+  // spans in the front tag line and the back headline are hand-set to
+  // palette.green. If the user picks green itself as the background, those
+  // spans would render green-on-green — fall back to charcoal there too.
+  const greenAccentColor = palette.backgroundHex === palette.green ? 'var(--charcoal)' : 'var(--green)'
 
   return {
     light,
@@ -31,6 +36,7 @@ function resolveTokens(palette) {
     hasPhotoWindow: !light,
     dividerColor: goldAccentColor,
     titleColor: goldAccentColor,
+    greenAccentColor,
   }
 }
 

@@ -61,3 +61,13 @@ test('resolveTokens keeps the title color gold for any other background', () => 
   const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.beige })
   assert.equal(t.titleColor, 'var(--gold)')
 })
+
+test('resolveTokens falls the green accent color back to charcoal when the chosen background equals palette.green', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.green })
+  assert.equal(t.greenAccentColor, 'var(--charcoal)')
+})
+
+test('resolveTokens keeps the green accent color green for any other background', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.beige })
+  assert.equal(t.greenAccentColor, 'var(--green)')
+})
