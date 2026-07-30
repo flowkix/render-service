@@ -10,7 +10,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -31,7 +31,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The driver-side hood panel of the coffee kiosk, the sloped surface directly above the service counter.",
+          "generativeFragment": "Place the logo flat and centered across the driver-side hood panel in a landscape orientation, following the panel's slight forward slope so it reads clearly from the counter side of the truck."
         },
         "wrap_zone_2": {
           "label": "Left Counter Trim Strip",
@@ -39,7 +41,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -60,7 +62,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The narrow trim strip running along the front edge of the driver-side service counter, just below the hood panel.",
+          "generativeFragment": "Stretch the logo as a thin horizontal band along this trim strip, keeping it legible at a low height and aligned with the counter's front edge."
         },
         "wrap_zone_3": {
           "label": "Left Counter Panel",
@@ -68,7 +72,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -89,7 +93,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The main front face panel of the driver-side service counter, below the trim strip.",
+          "generativeFragment": "Place the logo landscape-oriented and centered on this counter panel, sized to fill most of the panel width while leaving a small margin at each edge."
         },
         "wrap_zone_4": {
           "label": "Left Counter Narrow Panel",
@@ -97,7 +103,7 @@
             "assembled"
           ],
           "shape": "rect_portrait",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -118,7 +124,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "vertical"
+          "preferredAssetVariant": "vertical",
+          "anchorDescription": "The narrow vertical end panel at the right edge of the driver-side counter, beside the main counter panel.",
+          "generativeFragment": "Place the logo in a vertical, portrait orientation on this narrow panel, scaled down to fit its tall, narrow proportions without overflowing the edges."
         },
         "wrap_zone_5": {
           "label": "Left Bottom Band",
@@ -126,7 +134,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -147,7 +155,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The horizontal band running along the base of the driver-side kiosk, below the service counter panel.",
+          "generativeFragment": "Run the logo as a wide horizontal placement along this bottom band, low enough that it reads as skirting trim beneath the counter."
         },
         "wrap_zone_6": {
           "label": "Left Cab Door",
@@ -155,7 +165,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -176,7 +186,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The driver-side door of the truck's cab, the driving compartment at the front of the vehicle.",
+          "generativeFragment": "Center the logo on the driver-side cab door in a landscape layout, following the door's flat panel surface and matching its real-world lighting."
         },
         "wrap_zone_7": {
           "label": "Rear Hatch Upper Panel",
@@ -184,7 +196,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -205,7 +217,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The upper panel of the rear hatch, visible when the hatch is lifted open at the back of the truck.",
+          "generativeFragment": "Place the logo horizontally across the upper rear hatch panel, following the panel's slight curve so it looks flush with the hatch surface."
         },
         "wrap_zone_8": {
           "label": "Rear Interior Large Panel",
@@ -213,7 +227,7 @@
             "assembled"
           ],
           "shape": "rect_portrait",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -234,7 +248,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "vertical"
+          "preferredAssetVariant": "vertical",
+          "anchorDescription": "The large interior wall panel inside the rear hatch compartment, visible from behind the truck when the hatch is open.",
+          "generativeFragment": "Place the logo in a tall portrait orientation centered on this interior wall panel, sized to use most of its height while staying framed within the panel's natural edges."
         },
         "wrap_zone_9": {
           "label": "Rear Interior Narrow Panel",
@@ -242,7 +258,7 @@
             "assembled"
           ],
           "shape": "rect_portrait",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -263,7 +279,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "vertical"
+          "preferredAssetVariant": "vertical",
+          "anchorDescription": "The narrow interior wall strip beside the large rear panel, inside the open hatch compartment.",
+          "generativeFragment": "Scale the logo down to a slim vertical placement that fits this narrow interior strip without crowding its edges."
         },
         "wrap_zone_10": {
           "label": "Right Cab Door",
@@ -271,7 +289,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -292,7 +310,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The passenger-side door of the truck's cab, mirroring the driver-side door on the opposite end of the vehicle.",
+          "generativeFragment": "Center the logo on the passenger-side cab door in a landscape layout, matching the same scale and placement style used on the driver-side door for visual symmetry."
         },
         "wrap_zone_11": {
           "label": "Right Hood Panel",
@@ -300,7 +320,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -321,7 +341,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The passenger-side hood panel of the coffee kiosk, mirroring the driver-side hood panel across the rear hatch.",
+          "generativeFragment": "Place the logo flat across the passenger-side hood panel in landscape orientation, following its forward slope and matching the visual weight of the driver-side hood placement."
         },
         "wrap_zone_12": {
           "label": "Right Counter Trim Strip",
@@ -329,7 +351,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -350,7 +372,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The narrow trim strip along the front edge of the passenger-side service counter, just below its hood panel.",
+          "generativeFragment": "Stretch the logo as a thin horizontal band along this trim strip, matching the height and style used on the driver-side counter trim strip."
         },
         "wrap_zone_13": {
           "label": "Right Bottom Band",
@@ -358,7 +382,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -379,7 +403,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The horizontal band along the base of the passenger-side kiosk, below its service counter.",
+          "generativeFragment": "Run the logo as a wide horizontal placement along this bottom band, mirroring the driver-side bottom band treatment."
         }
       }
     },
@@ -392,7 +418,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -413,7 +439,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The driver-side hood panel of the mixing station, the sloped surface above the counter where drinks are prepared.",
+          "generativeFragment": "Place the logo flat and centered across the driver-side hood panel in landscape orientation, following its slope above the mixing counter."
         },
         "wrap_zone_2": {
           "label": "Left Counter Trim Strip",
@@ -421,7 +449,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -442,7 +470,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The trim strip along the front edge of the driver-side mixing counter, below the hood panel.",
+          "generativeFragment": "Stretch the logo as a thin horizontal band along this trim strip, keeping it legible along the counter's front edge."
         },
         "wrap_zone_3": {
           "label": "Left Small Panel",
@@ -450,7 +480,7 @@
             "assembled"
           ],
           "shape": "rect_portrait",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -471,7 +501,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "vertical"
+          "preferredAssetVariant": "vertical",
+          "anchorDescription": "A small vertical end panel on the driver-side of the mixing station, adjacent to the fridge panel below the counter.",
+          "generativeFragment": "Place a compact, portrait-oriented version of the logo on this small end panel, scaled conservatively to avoid crowding such a tight surface."
         },
         "wrap_zone_4": {
           "label": "Left Fridge Panel",
@@ -479,7 +511,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -500,7 +532,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The front door panel of the driver-side beverage fridge unit built into the mixing station.",
+          "generativeFragment": "Center the logo in landscape orientation on the fridge door panel, following the panel's flat surface and any visible seams so it looks like real signage on the fridge front."
         },
         "wrap_zone_5": {
           "label": "Left Bottom Band",
@@ -508,7 +542,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -529,7 +563,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The horizontal band along the base of the driver-side mixing station, below the fridge and counter panels.",
+          "generativeFragment": "Run the logo as a wide horizontal placement along this bottom band beneath the counter and fridge."
         },
         "wrap_zone_6": {
           "label": "Left Cab Door",
@@ -537,7 +573,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -558,7 +594,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The driver-side door of the truck's cab, the driving compartment at the front of the vehicle.",
+          "generativeFragment": "Center the logo on the driver-side cab door in landscape orientation, following the door's flat surface and real-world lighting."
         },
         "wrap_zone_7": {
           "label": "Rear Hatch Upper Panel",
@@ -566,7 +604,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -587,7 +625,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The upper panel of the rear hatch, visible when the hatch is lifted open at the back of the truck.",
+          "generativeFragment": "Place the logo horizontally across the upper rear hatch panel, following its slight curve for a flush, painted-on look."
         },
         "wrap_zone_8": {
           "label": "Rear Trim Strip",
@@ -595,7 +635,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -616,7 +656,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The trim strip running below the rear hatch panel, above the rear interior counter where drinks are mixed.",
+          "generativeFragment": "Stretch the logo as a thin horizontal band along this rear trim strip, matching the scale of the side counter trim strips."
         },
         "wrap_zone_9": {
           "label": "Rear Interior Panel",
@@ -624,7 +666,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -645,7 +687,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The interior counter panel visible inside the rear hatch compartment where drinks are mixed.",
+          "generativeFragment": "Center the logo landscape-oriented on this rear interior counter panel, sized to fill most of its width."
         },
         "wrap_zone_10": {
           "label": "Right Cab Door",
@@ -653,7 +697,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -674,7 +718,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The passenger-side door of the truck's cab, mirroring the driver-side cab door.",
+          "generativeFragment": "Center the logo on the passenger-side cab door in landscape orientation, matching the driver-side door's scale and placement."
         },
         "wrap_zone_11": {
           "label": "Right Hood Panel",
@@ -682,7 +728,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -703,7 +749,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The passenger-side hood panel of the mixing station, mirroring the driver-side hood panel.",
+          "generativeFragment": "Place the logo flat across the passenger-side hood panel in landscape orientation, mirroring the driver-side hood treatment."
         },
         "wrap_zone_12": {
           "label": "Right Trim Strip",
@@ -711,7 +759,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -732,7 +780,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The trim strip along the front edge of the passenger-side mixing counter, below its hood panel.",
+          "generativeFragment": "Stretch the logo as a thin horizontal band along this trim strip, matching the driver-side counter trim strip."
         },
         "wrap_zone_13": {
           "label": "Right Bottom Band",
@@ -740,7 +790,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -761,7 +811,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The horizontal band along the base of the passenger-side mixing station, below its counter.",
+          "generativeFragment": "Run the logo as a wide horizontal placement along this bottom band, mirroring the driver-side bottom band."
         }
       }
     },
@@ -774,7 +826,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -795,7 +847,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The driver-side hood panel of the blending station, the sloped surface above the juice counter.",
+          "generativeFragment": "Place the logo flat and centered across the driver-side hood panel in landscape orientation, following the panel's slope above the counter."
         },
         "wrap_zone_2": {
           "label": "Left Counter Trim Strip",
@@ -803,7 +857,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -824,7 +878,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The trim strip along the front edge of the driver-side juice counter, below the hood panel.",
+          "generativeFragment": "Stretch the logo as a thin horizontal band along this trim strip, keeping it legible along the counter's front edge."
         },
         "wrap_zone_3": {
           "label": "Left Bottom Band",
@@ -832,7 +888,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -853,7 +909,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The horizontal band along the base of the driver-side blending station, below the juice counter.",
+          "generativeFragment": "Run the logo as a wide horizontal placement along this bottom band beneath the counter."
         },
         "wrap_zone_4": {
           "label": "Left Cab Door",
@@ -861,7 +919,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -882,7 +940,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The driver-side door of the truck's cab, the driving compartment at the front of the vehicle.",
+          "generativeFragment": "Center the logo on the driver-side cab door in landscape orientation, following the door's flat surface and real-world lighting."
         },
         "wrap_zone_5": {
           "label": "Rear Hatch Upper Panel",
@@ -890,7 +950,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -911,7 +971,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The upper panel of the rear hatch, visible when the hatch is lifted open at the back of the truck.",
+          "generativeFragment": "Place the logo horizontally across the upper rear hatch panel, following its slight curve for a flush, painted-on look."
         },
         "wrap_zone_6": {
           "label": "Rear Small Panel",
@@ -919,7 +981,7 @@
             "assembled"
           ],
           "shape": "rect_portrait",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -940,7 +1002,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "vertical"
+          "preferredAssetVariant": "vertical",
+          "anchorDescription": "A small vertical panel inside the rear hatch compartment, beside the wider interior panel where the blending station is visible.",
+          "generativeFragment": "Place a compact, portrait-oriented version of the logo on this small interior panel, scaled conservatively to fit its narrow surface."
         },
         "wrap_zone_7": {
           "label": "Rear Interior Panel",
@@ -948,7 +1012,7 @@
             "assembled"
           ],
           "shape": "rect_portrait",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -969,7 +1033,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "vertical"
+          "preferredAssetVariant": "vertical",
+          "anchorDescription": "The tall interior wall panel inside the rear hatch compartment, next to the blending station.",
+          "generativeFragment": "Place the logo in a tall portrait orientation centered on this interior panel, sized to use most of its height."
         },
         "wrap_zone_8": {
           "label": "Right Cab Door",
@@ -977,7 +1043,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -998,7 +1064,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The passenger-side door of the truck's cab, mirroring the driver-side cab door.",
+          "generativeFragment": "Center the logo on the passenger-side cab door in landscape orientation, matching the driver-side door's scale and placement."
         },
         "wrap_zone_9": {
           "label": "Right Hood Panel",
@@ -1006,7 +1074,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -1027,7 +1095,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The passenger-side hood panel of the blending station, mirroring the driver-side hood panel.",
+          "generativeFragment": "Place the logo flat across the passenger-side hood panel in landscape orientation, mirroring the driver-side hood treatment."
         },
         "wrap_zone_10": {
           "label": "Right Counter Trim Strip",
@@ -1035,7 +1105,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -1056,7 +1126,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The trim strip along the front edge of the passenger-side juice counter, below its hood panel.",
+          "generativeFragment": "Stretch the logo as a thin horizontal band along this trim strip, matching the driver-side counter trim strip."
         },
         "wrap_zone_11": {
           "label": "Right Interior Narrow Panel",
@@ -1064,7 +1136,7 @@
             "assembled"
           ],
           "shape": "rect_portrait",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -1085,7 +1157,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "vertical"
+          "preferredAssetVariant": "vertical",
+          "anchorDescription": "A narrow vertical end panel on the passenger-side counter area, near the outer edge of the blending station.",
+          "generativeFragment": "Scale the logo down to a slim vertical placement that fits this narrow end panel without crowding its edges."
         },
         "wrap_zone_12": {
           "label": "Right Bottom Band",
@@ -1093,7 +1167,7 @@
             "assembled"
           ],
           "shape": "rect_landscape",
-          "compositingMode": "sharp",
+          "compositingMode": "generative",
           "cornerPoints": {
             "assembled": [
               [
@@ -1114,7 +1188,9 @@
               ]
             ]
           },
-          "preferredAssetVariant": "horizontal"
+          "preferredAssetVariant": "horizontal",
+          "anchorDescription": "The horizontal band along the base of the passenger-side blending station, below its counter.",
+          "generativeFragment": "Run the logo as a wide horizontal placement along this bottom band, mirroring the driver-side bottom band."
         }
       }
     }
