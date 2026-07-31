@@ -25,7 +25,7 @@ function sharedHead(palette) {
   .panel { position: absolute; top: 0.065in; width: 5.49in; height: 8.5in; overflow: hidden; }
   .photo { position: absolute; inset: 0; background-size: cover; z-index: 0; }
   .tint { position: absolute; inset: 0; z-index: 0; }
-  .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; padding: 0.125in; }
+  .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; padding: 0.22in; }
   .brand-row { display: flex; align-items: center; gap: 12px; }
   .badge { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex: 0 0 auto; background: #fff;
     box-shadow: 0 0 0 2.5px rgba(230,213,181,0.9); padding: 3.5px; }

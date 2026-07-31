@@ -74,4 +74,10 @@ test('buildFrontHtml + buildBackHtml render the correct physical sheet size (11.
   }
 })
 
+test('.content padding gives real cushion past the 0.125in safety line, not exactly on it', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.content\s*\{[^}]*padding:\s*0\.22in/)
+  assert.doesNotMatch(html, /\.content\s*\{[^}]*padding:\s*0\.125in/)
+})
+
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }
