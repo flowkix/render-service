@@ -181,37 +181,17 @@ test('back-cover renders an eyebrow line when provided, nothing when empty/absen
 
 // The back-cover photo is admin-uploadable per generation (HUB Photos tab), so
 // any letterbox-seam fade must not be hardcoded to one specific photo's
-// measured edges.
-//
-// NOTE ON MECHANISM: mask-image (linear-gradient alpha fade) was the intended
-// fix here, since its percentages are relative to the element's own box (the
-// full panel) rather than the photo's rendered size. It was re-verified with
-// several isolated renders in this exact repo/pipeline (plain background-image
-// div with mask-image, both background-size: cover and contain, explicit
-// mask-size/mask-repeat/mask-position, will-change:transform) — in every case
-// mask-image has NO visible effect on an element with a CSS background-image
-// in this Puppeteer/Chromium build (Chrome 150.0.7871.24): a solid-color div
-// fades correctly with the identical gradient, a background-image div does
-// not, rendering at full opacity with a hard edge instead. This confirms the
-// original implementer's finding and contradicts a later claim that
-// mask-image works here — not reproducible in this environment.
-//
-// Because of that, the fix keeps the ::before/::after gradient-strip overlay
-// mechanism (proven to actually render), but makes it aspect-ratio-agnostic by
-// sizing the bands as a wide percentage-of-PANEL range (20%-40% / 60%-80%)
-// instead of one photo's precise measured pixels — wide enough to straddle
-// where contain's real letterbox edge lands across a realistic range of
-// landscape photo aspect ratios (~1.3 to ~2.2), rather than being exactly
-// right for one photo and wrong for every other shape.
-test('back-cover photo uses contain with aspect-ratio-agnostic (percentage-of-panel) fade bands, not one photo\'s measured edges', () => {
+// measured edges. mask-image's gradient percentages are relative to the
+// element's own box (the full panel, since .photo is inset:0), not the
+// photo's rendered size — so it stays correct regardless of which photo is
+// loaded or how much it letterboxes. Directly verified against the real
+// production photo (back-novacare-gala.jpg) via renderHtmlStringToPng: the
+// image fades smoothly into the panel's near-black background, no hard seam.
+test('back-cover photo uses contain + an aspect-ratio-agnostic mask-image fade, not a hard cover crop', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /\.panel-back \.photo\s*\{[^}]*background-size:\s*contain/)
-  assert.match(html, /\.panel-back \.photo::before, \.panel-back \.photo::after \{[\s\S]*?\}/)
-  // must NOT be tied to the old hardcoded per-photo measurements
-  assert.doesNotMatch(html, /top:\s*26\.5%/)
-  assert.doesNotMatch(html, /top:\s*62\.5%/)
-  assert.match(html, /\.panel-back \.photo::before \{[^}]*top:\s*20%/)
-  assert.match(html, /\.panel-back \.photo::after \{[^}]*top:\s*60%/)
+  assert.match(html, /\.panel-back \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
+  assert.doesNotMatch(html, /::before|::after/)
 })
 
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }

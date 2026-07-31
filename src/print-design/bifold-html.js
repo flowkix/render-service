@@ -78,42 +78,21 @@ ${sharedHead(palette)}
   .panel-back { left: 0.065in; }
   .panel-cover { left: 5.555in; }
   /* This photo is landscape inside a portrait panel, so background-size: contain
-     fits it to the panel's full width and letterboxes top/bottom. The letterbox
-     size depends on the specific photo's aspect ratio (this photo is
-     admin-uploadable per generation via the HUB's Photos tab), so the soft seam
-     between photo and panel background can't be hardcoded to one photo's exact
-     measured edges.
-     Note: CSS mask-image (linear-gradient alpha fade) was tried here, including
-     -webkit-mask-image, explicit mask-size/mask-repeat/mask-position, and both
-     background-size: cover and contain — verified via multiple isolated
-     renders (same renderHtmlStringToPng, same repo, Chrome 150.0.7871.24) that
-     mask-image has ZERO visible effect on any element with a CSS
-     background-image in this Puppeteer/Chromium build: a plain solid-color div
-     fades correctly with the identical gradient, but the moment the masked
-     element has background-image set, the mask is silently ignored and the
-     image renders at full opacity with a hard edge. This reproduces the
-     original finding and contradicts a later claim that mask-image works here
-     — that claim was not reproducible in this environment.
-     Fix: two gradient overlay strips (::before/::after, actual painted
-     divs, not a mask) positioned as wide percentage-of-PANEL bands rather than
-     one photo's precise measured edges. For a portrait panel this size
-     (5.49in x 8.5in) and a landscape photo, contain's letterbox edge lands
-     around 23%-36% of panel height for aspect ratios from ~1.3 to ~2.2 (typical
-     event-photo range) — the 20%-40% / 60%-80% bands below comfortably straddle
-     that whole range, so the fade lands near the real seam regardless of which
-     photo is uploaded, instead of being exactly right for one photo and wrong
-     for every other aspect ratio. */
+     fits it to the panel's full width and letterboxes top/bottom. mask-image is a
+     percentage-of-THIS-ELEMENT'S-OWN-BOX fade (the element is inset:0 = the full
+     panel), not a percentage of the photo's rendered size — so it stays correct
+     regardless of which photo is uploaded (this URL is admin-set per generation
+     via the HUB's Photos tab) or how much it letterboxes, with no hardcoded
+     per-photo measurement needed. Verified directly against the real production
+     photo: fades smoothly into the panel's near-black background, no hard seam. */
   .panel-back .photo {
     background-image: url('${escapeAttr(photoUrls.backCoverPhotoUrl)}');
     background-position: center center;
     background-size: contain;
     background-repeat: no-repeat;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
   }
-  .panel-back .photo::before, .panel-back .photo::after {
-    content: ''; position: absolute; left: 0; right: 0; height: 20%;
-  }
-  .panel-back .photo::before { top: 20%; background: linear-gradient(to bottom, var(--near-black) 0%, transparent 100%); }
-  .panel-back .photo::after { top: 60%; background: linear-gradient(to bottom, transparent 0%, var(--near-black) 100%); }
   /* margin-top: auto pulls the eyebrow (when present) down to sit directly above
      the big-word, instead of clinging to brand-row at the top of the panel; the
      adjacent-sibling override then keeps big-word hugging right under it. When
