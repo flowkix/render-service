@@ -11,9 +11,16 @@ const FIXTURE_CONTENT = {
     email: 'info@snacketfoods.net',
     website: 'snacketnow.com',
     location: 'Charlotte, NC',
+    tagline: { top: "CHARLOTTE'S FIRST\nFULLY ELECTRIC", accent: 'MOBILE EXPERIENTIAL\nMEDIA PLATFORM.' },
+  },
+  back: {
+    kicker: 'SNACKET',
+    headline: { top: 'Your Brand.', accent: 'Deployed.' },
+    subhead: 'Physical brand presence.\nOn demand.',
+    qrLabel: 'See the platform in action',
   },
 }
-const BASE_PALETTE = { green: '#88AD59', gold: '#DAAB61', beige: '#E6D5B5' }
+const BASE_PALETTE = { green: '#88AD59', gold: '#DAAB61', beige: '#E6D5B5', accentHex: '#88AD59' }
 const FIXTURE_PHOTOS = {
   mixobarUrl: 'https://example.com/mixobar.png',
   logoUrl: 'https://example.com/logo.png',
@@ -31,6 +38,12 @@ test('buildFrontHtml renders name/title and all 4 contact rows for a light backg
   assert.match(html, /logo\.png/)
 })
 
+test('buildFrontHtml renders the tagline top and accent lines with a manual line break', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige }, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /CHARLOTTE'S FIRST<br>FULLY ELECTRIC/)
+  assert.match(html, /MOBILE EXPERIENTIAL<br>MEDIA PLATFORM\./)
+})
+
 test('buildFrontHtml uses a plain logo (no plate) on a light background', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige }, photoUrls: FIXTURE_PHOTOS })
   assert.ok(!html.includes('logo-plate'))
@@ -43,7 +56,7 @@ test('buildFrontHtml wraps the logo in a light plate on the charcoal background'
 
 test('buildFrontHtml escapes unsafe characters in name/title (no raw HTML injection)', () => {
   const html = buildFrontHtml({
-    content: { front: { ...FIXTURE_CONTENT.front, name: '<script>alert(1)</script>' } },
+    content: { ...FIXTURE_CONTENT, front: { ...FIXTURE_CONTENT.front, name: '<script>alert(1)</script>' } },
     palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige },
     photoUrls: FIXTURE_PHOTOS,
   })
@@ -53,7 +66,7 @@ test('buildFrontHtml escapes unsafe characters in name/title (no raw HTML inject
 
 test('buildFrontHtml supports a literal newline in name for manual line-wrap control', () => {
   const html = buildFrontHtml({
-    content: { front: { ...FIXTURE_CONTENT.front, name: 'Johanna\nSuarez' } },
+    content: { ...FIXTURE_CONTENT, front: { ...FIXTURE_CONTENT.front, name: 'Johanna\nSuarez' } },
     palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige },
     photoUrls: FIXTURE_PHOTOS,
   })
@@ -66,28 +79,28 @@ test('buildFrontHtml renders the correct physical sheet size (3.62in x 2.12in)',
   assert.match(html, /height:\s*2\.12in/)
 })
 
-test('buildFrontHtml does not render the title in gold-on-gold when the background itself is gold', () => {
-  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.gold }, photoUrls: FIXTURE_PHOTOS })
+test('buildFrontHtml does not render the title in the same color as the background', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.accentHex }, photoUrls: FIXTURE_PHOTOS })
   const titleRuleMatch = html.match(/\.title \{[^}]*\}/)
   assert.ok(titleRuleMatch, 'expected a .title CSS rule in the output')
-  assert.ok(!titleRuleMatch[0].includes('var(--gold)'), `.title should not be var(--gold) when background is gold, got: ${titleRuleMatch[0]}`)
+  assert.ok(!titleRuleMatch[0].includes(BASE_PALETTE.accentHex), `.title should not be accentHex when background matches accentHex, got: ${titleRuleMatch[0]}`)
   assert.match(titleRuleMatch[0], /var\(--charcoal\)/)
 })
 
-test('buildFrontHtml does not render the tag "g" span in green-on-green when the background itself is green', () => {
-  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.green }, photoUrls: FIXTURE_PHOTOS })
-  const tagGRuleMatch = html.match(/\.tag \.g \{[^}]*\}/)
-  assert.ok(tagGRuleMatch, 'expected a .tag .g CSS rule in the output')
-  assert.ok(!tagGRuleMatch[0].includes('var(--green)'), `.tag .g should not be var(--green) when background is green, got: ${tagGRuleMatch[0]}`)
-  assert.match(tagGRuleMatch[0], /var\(--charcoal\)/)
+test('buildFrontHtml does not render the tagline accent in the same color as the background', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.accentHex }, photoUrls: FIXTURE_PHOTOS })
+  const tagAccentRuleMatch = html.match(/\.tag-accent \{[^}]*\}/)
+  assert.ok(tagAccentRuleMatch, 'expected a .tag-accent CSS rule in the output')
+  assert.ok(!tagAccentRuleMatch[0].includes(BASE_PALETTE.accentHex), `.tag-accent should not be accentHex when background matches accentHex, got: ${tagAccentRuleMatch[0]}`)
+  assert.match(tagAccentRuleMatch[0], /var\(--charcoal\)/)
 })
 
-test('buildBackHtml does not render the h1 "g" span in green-on-green when the background itself is green', () => {
-  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.green }, photoUrls: FIXTURE_PHOTOS })
-  const h1GRuleMatch = html.match(/\.h1 \.g \{[^}]*\}/)
-  assert.ok(h1GRuleMatch, 'expected a .h1 .g CSS rule in the output')
-  assert.ok(!h1GRuleMatch[0].includes('var(--green)'), `.h1 .g should not be var(--green) when background is green, got: ${h1GRuleMatch[0]}`)
-  assert.match(h1GRuleMatch[0], /var\(--charcoal\)/)
+test('buildBackHtml does not render the headline accent in the same color as the background', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.accentHex }, photoUrls: FIXTURE_PHOTOS })
+  const h1AccentRuleMatch = html.match(/\.h1-accent \{[^}]*\}/)
+  assert.ok(h1AccentRuleMatch, 'expected a .h1-accent CSS rule in the output')
+  assert.ok(!h1AccentRuleMatch[0].includes(BASE_PALETTE.accentHex), `.h1-accent should not be accentHex when background matches accentHex, got: ${h1AccentRuleMatch[0]}`)
+  assert.match(h1AccentRuleMatch[0], /var\(--charcoal\)/)
 })
 
 test('buildBackHtml renders the mixobar photo mirrored and the QR code, no photo-plate on a light background', () => {
@@ -103,8 +116,21 @@ test('buildBackHtml adds a photo-plate window behind the photo on the charcoal b
   assert.match(html, /class="photo-plate"/)
 })
 
-test('buildBackHtml has no editable back-side text content (static tagline only)', () => {
+test('buildBackHtml renders the kicker, headline, subhead, and QR label from content.back', () => {
   const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige }, photoUrls: FIXTURE_PHOTOS })
-  assert.match(html, /Your Brand\./)
-  assert.match(html, /Deployed\./)
+  assert.match(html, />SNACKET</)
+  assert.match(html, />Your Brand\.</)
+  assert.match(html, />Deployed\.</)
+  assert.match(html, /Physical brand presence\.<br>On demand\./)
+  assert.match(html, />See the platform in action</)
+})
+
+test('buildBackHtml escapes unsafe characters in back content fields', () => {
+  const html = buildBackHtml({
+    content: { ...FIXTURE_CONTENT, back: { ...FIXTURE_CONTENT.back, kicker: '<script>alert(1)</script>' } },
+    palette: { ...BASE_PALETTE, backgroundHex: BASE_PALETTE.beige },
+    photoUrls: FIXTURE_PHOTOS,
+  })
+  assert.ok(!html.includes('<script>alert(1)</script>'))
+  assert.match(html, /&lt;script&gt;/)
 })

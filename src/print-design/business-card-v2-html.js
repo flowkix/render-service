@@ -16,10 +16,11 @@ function sharedHead(palette) {
 </style>`
 }
 
-// content.front.name may contain a literal newline (e.g. "Johanna\nSuarez") to
-// control where the name wraps — same convention as the shipped card.
-function nameHtml(name) {
-  return escapeHtml(name).replace(/\n/g, '<br>')
+// Text may contain a literal newline (e.g. "Johanna\nSuarez", or a
+// multi-line tagline/headline block) to control where it wraps — rendered
+// as <br>. Used for every free-text field that supports manual line breaks.
+function multilineHtml(text) {
+  return escapeHtml(text).replace(/\n/g, '<br>')
 }
 
 function buildFrontHtml({ content, palette, photoUrls }) {
@@ -43,8 +44,7 @@ ${sharedHead(palette)}
 ${logoPlateCss}  .logo { width: ${t.hasLogoPlate ? '0.76in' : '0.8in'}; height: ${t.hasLogoPlate ? '0.76in' : '0.8in'}; object-fit: contain; }
   .tag { margin-top: 0.0667in; font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
     font-size: 5.5pt; line-height: 1.22; letter-spacing: 0.15pt; color: ${t.primaryTextColor}; }
-  .tag span { display: block; }
-  .tag .g { color: ${t.greenAccentColor}; }
+  .tag-accent { color: ${t.accentColor}; }
   .div { width: 0.01in; align-self: stretch; background: ${t.dividerColor}; margin: 0 0.12in; }
   .right { flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .name { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 9.6pt;
@@ -63,15 +63,13 @@ ${logoPlateCss}  .logo { width: ${t.hasLogoPlate ? '0.76in' : '0.8in'}; height: 
   <div class="left">
     ${logoBlock}
     <div class="tag">
-      <span>CHARLOTTE'S FIRST</span>
-      <span>FULLY ELECTRIC</span>
-      <span class="g">MOBILE EXPERIENTIAL</span>
-      <span class="g">MEDIA PLATFORM.</span>
+      <div>${multilineHtml(front.tagline.top)}</div>
+      <div class="tag-accent">${multilineHtml(front.tagline.accent)}</div>
     </div>
   </div>
   <div class="div"></div>
   <div class="right">
-    <div class="name">${nameHtml(front.name)}</div>
+    <div class="name">${multilineHtml(front.name)}</div>
     <div class="title">${escapeHtml(front.title)}</div>
     <div class="row">
       <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="${t.badgeStroke}" stroke-width="2"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1z"/></svg></div>
@@ -96,6 +94,7 @@ ${logoPlateCss}  .logo { width: ${t.hasLogoPlate ? '0.76in' : '0.8in'}; height: 
 }
 
 function buildBackHtml({ content, palette, photoUrls }) {
+  const { back } = content
   const t = resolveTokens(palette)
   const photoPlate = t.hasPhotoWindow ? '<div class="photo-plate"></div>' : ''
   const photoRect = t.hasPhotoWindow
@@ -123,8 +122,7 @@ ${photoPlateCss}  .photo { position: absolute; ${photoRect}
     letter-spacing: 1.5pt; color: ${t.dividerColor}; }
   .h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 12.5pt;
     line-height: 1.02; letter-spacing: 0.15pt; color: ${t.primaryTextColor}; text-transform: uppercase; }
-  .h1 span { display: block; }
-  .h1 .g { color: ${t.greenAccentColor}; }
+  .h1-accent { color: ${t.accentColor}; }
   .rule { width: 0.4667in; height: 0.01in; background: ${t.dividerColor}; margin: 0.0667in 0; }
   .sub { font-family: 'Barlow', sans-serif; font-weight: 700; font-size: 4pt; letter-spacing: 0.7pt;
     color: ${t.subColor}; line-height: 1.4; text-transform: uppercase; }
@@ -142,14 +140,17 @@ ${photoPlateCss}  .photo { position: absolute; ${photoRect}
   ${photoPlate}
   <div class="photo"></div>
   <div class="text">
-    <div class="kicker"><div class="ln"></div><span>SNACKET</span><div class="ln"></div></div>
-    <div class="h1"><span>Your Brand.</span><span class="g">Deployed.</span></div>
+    <div class="kicker"><div class="ln"></div><span>${escapeHtml(back.kicker)}</span><div class="ln"></div></div>
+    <div class="h1">
+      <div>${multilineHtml(back.headline.top)}</div>
+      <div class="h1-accent">${multilineHtml(back.headline.accent)}</div>
+    </div>
     <div class="rule"></div>
-    <div class="sub">Physical brand presence.<br>On demand.</div>
+    <div class="sub">${multilineHtml(back.subhead)}</div>
   </div>
   <div class="qr">
     <div class="qr-box"><img src="${escapeAttr(photoUrls.qrUrl)}"></div>
-    <div class="qr-label">See the platform in action</div>
+    <div class="qr-label">${escapeHtml(back.qrLabel)}</div>
   </div>
 </div>
 </body>
