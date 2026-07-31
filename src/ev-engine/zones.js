@@ -2,9 +2,27 @@
 const path = require('path')
 const fs = require('fs')
 
-function loadZonesConfig(engineConfig) {
-  const file = path.join(__dirname, 'config', engineConfig.zonesVersion)
+function loadZonesConfig(zonesFileName) {
+  const file = path.join(__dirname, 'config', zonesFileName)
   return JSON.parse(fs.readFileSync(file, 'utf8'))
+}
+
+/**
+ * Resolves which zones config file to load for a given vehicle.
+ * `vehicle` is optional — omitting it (every existing caller) preserves the
+ * original single-vehicle (NitroCafé) behavior via engineConfig.zonesVersion.
+ * Additive only: adding a vehicle here never changes what an unspecified
+ * vehicle resolves to.
+ */
+function resolveZonesFileName(engineConfig, vehicle) {
+  if (vehicle && engineConfig.vehicles && engineConfig.vehicles[vehicle]) {
+    return engineConfig.vehicles[vehicle].zonesVersion
+  }
+  if (vehicle && (!engineConfig.vehicles || !engineConfig.vehicles[vehicle])) {
+    const known = Object.keys(engineConfig.vehicles || {}).concat('(default/unspecified)')
+    throw new Error(`Unknown vehicle "${vehicle}". Known vehicles: ${known.join(', ')}`)
+  }
+  return engineConfig.zonesVersion
 }
 
 /**
@@ -30,4 +48,4 @@ function resolveZones(input, zonesConfig) {
   }
 }
 
-module.exports = { loadZonesConfig, resolveZones }
+module.exports = { loadZonesConfig, resolveZonesFileName, resolveZones }
