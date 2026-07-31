@@ -179,15 +179,20 @@ test('back-cover renders an eyebrow line when provided, nothing when empty/absen
   assert.doesNotMatch(withoutEyebrow, /class="back-eyebrow"/)
 })
 
-// The back-cover photo is admin-uploadable per generation (HUB Photos tab), so
-// any letterbox-seam fade must not be hardcoded to one specific photo's
-// measured edges. mask-image's gradient percentages are relative to the
-// element's own box (the full panel, since .photo is inset:0), not the
-// photo's rendered size — so it stays correct regardless of which photo is
-// loaded or how much it letterboxes. Directly verified against the real
+// The back-cover photo is admin-uploadable per generation (HUB Photos tab).
+// background-position: center 1cm pins the TOP offset as a fixed length, which
+// is aspect-ratio-agnostic by construction (a CSS <length>, unlike a
+// <percentage>, offsets the image edge from the container edge regardless of
+// the image/container size difference) — the top mask-image stop is tuned
+// once and stays correct for any photo. The BOTTOM mask-image stop is NOT
+// aspect-ratio-agnostic: it's tuned to where the CURRENT photo's real bottom
+// edge lands (computed from its actual dimensions), so it will need
+// re-tuning if a future replacement photo has a meaningfully different aspect
+// ratio (same re-tuning pattern already used for the two interior panels —
+// see the git history on those). Directly verified against the real
 // production photo (back-novacare-gala.jpg) via renderHtmlStringToPng: the
 // image fades smoothly into the panel's near-black background, no hard seam.
-test('back-cover photo uses contain + an aspect-ratio-agnostic mask-image fade, not a hard cover crop', () => {
+test('back-cover photo uses contain + a mask-image fade (top offset is aspect-ratio-agnostic, bottom is tuned to the current photo), not a hard cover crop', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /\.panel-back \.photo\s*\{[^}]*background-size:\s*contain/)
   assert.match(html, /\.panel-back \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
