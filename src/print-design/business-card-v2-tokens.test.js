@@ -12,7 +12,7 @@ test('isLightBackground classifies charcoal as dark', () => {
   assert.equal(isLightBackground('#363C43'), false)
 })
 
-const PALETTE = { green: '#88AD59', gold: '#DAAB61', beige: '#E6D5B5' }
+const PALETTE = { green: '#88AD59', gold: '#DAAB61', beige: '#E6D5B5', accentHex: '#88AD59' }
 
 test('resolveTokens picks the light-treatment bundle for a light background', () => {
   const t = resolveTokens({ ...PALETTE, backgroundHex: '#E6D5B5' })
@@ -25,7 +25,7 @@ test('resolveTokens picks the light-treatment bundle for a light background', ()
   assert.equal(t.badgeStroke, '#fff')
   assert.equal(t.hasLogoPlate, false)
   assert.equal(t.hasPhotoWindow, false)
-  assert.equal(t.dividerColor, 'var(--gold)')
+  assert.equal(t.dividerColor, '#88AD59')
 })
 
 test('resolveTokens picks the dark-treatment bundle for the charcoal background', () => {
@@ -39,35 +39,35 @@ test('resolveTokens picks the dark-treatment bundle for the charcoal background'
   assert.equal(t.badgeStroke, '#363C43')
   assert.equal(t.hasLogoPlate, true)
   assert.equal(t.hasPhotoWindow, true)
-  assert.equal(t.dividerColor, 'var(--gold)')
+  assert.equal(t.dividerColor, '#88AD59')
 })
 
-test('resolveTokens falls the divider back to charcoal when the chosen background equals palette.gold', () => {
-  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.gold })
+test('resolveTokens falls the divider back to charcoal when the chosen background equals accentHex', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.accentHex })
   assert.equal(t.dividerColor, 'var(--charcoal)')
 })
 
-test('resolveTokens does not fall back the divider for any other background', () => {
-  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.green })
-  assert.equal(t.dividerColor, 'var(--gold)')
+test('resolveTokens does not fall back the divider when the background differs from accentHex', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.gold })
+  assert.equal(t.dividerColor, PALETTE.accentHex)
 })
 
-test('resolveTokens falls the title color back to charcoal when the chosen background equals palette.gold (same collision as the divider)', () => {
-  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.gold })
+test('resolveTokens falls the title color back to charcoal when the chosen background equals accentHex (same collision as the divider)', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.accentHex })
   assert.equal(t.titleColor, 'var(--charcoal)')
 })
 
-test('resolveTokens keeps the title color gold for any other background', () => {
+test('resolveTokens keeps the title color as accentHex for any other background', () => {
   const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.beige })
-  assert.equal(t.titleColor, 'var(--gold)')
+  assert.equal(t.titleColor, PALETTE.accentHex)
 })
 
-test('resolveTokens falls the green accent color back to charcoal when the chosen background equals palette.green', () => {
-  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.green })
-  assert.equal(t.greenAccentColor, 'var(--charcoal)')
+test('resolveTokens falls the accent color back to charcoal when the chosen background equals accentHex', () => {
+  const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.accentHex })
+  assert.equal(t.accentColor, 'var(--charcoal)')
 })
 
-test('resolveTokens keeps the green accent color green for any other background', () => {
+test('resolveTokens keeps the accent color as accentHex for any other background', () => {
   const t = resolveTokens({ ...PALETTE, backgroundHex: PALETTE.beige })
-  assert.equal(t.greenAccentColor, 'var(--green)')
+  assert.equal(t.accentColor, PALETTE.accentHex)
 })
