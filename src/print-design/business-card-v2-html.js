@@ -99,10 +99,10 @@ function buildBackHtml({ content, palette, photoUrls }) {
   const t = resolveTokens(palette)
   const photoPlate = t.hasPhotoWindow ? '<div class="photo-plate"></div>' : ''
   const photoRect = t.hasPhotoWindow
-    ? 'right: 0.18in; top: 0.1in; bottom: 0.1in; width: 57%;'
+    ? 'right: 0.23in; top: 0.15in; bottom: 0.15in; width: 57%;'
     : 'right: 0.08in; top: 0; height: 100%; width: 60%;'
   const photoPlateCss = t.hasPhotoWindow
-    ? `  .photo-plate { position: absolute; right: 0.1in; top: 0.1in; bottom: 0.1in; width: 61%;
+    ? `  .photo-plate { position: absolute; right: 0.15in; top: 0.15in; bottom: 0.15in; width: 61%;
     background: #f7f5f0; border-radius: 0.05in; box-shadow: 0 0 0.05in rgba(0,0,0,0.35); z-index: 1; }\n`
     : ''
 
