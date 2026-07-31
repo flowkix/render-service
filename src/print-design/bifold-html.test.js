@@ -191,7 +191,7 @@ test('back-cover renders an eyebrow line when provided, nothing when empty/absen
 // ratio (same re-tuning pattern already used for the two interior panels —
 // see the git history on those). Directly verified against the real
 // production photo (back-novacare-gala.jpg) via renderHtmlStringToPng: the
-// image fades smoothly into the panel's near-black background, no hard seam.
+// image fades smoothly into the panel's charcoal background, no hard seam.
 test('back-cover photo uses contain + a mask-image fade (top offset is aspect-ratio-agnostic, bottom is tuned to the current photo), not a hard cover crop', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /\.panel-back \.photo\s*\{[^}]*background-size:\s*contain/)
@@ -267,6 +267,24 @@ test('interior-left .glass and interior-right .row are narrower than the old 78%
   assert.doesNotMatch(html, /\.row\s*\{[^}]*width:\s*82%/)
   assert.match(html, /\.glass\s*\{[^}]*width:\s*\d{1,2}%/)
   assert.match(html, /\.row\s*\{[^}]*width:\s*\d{1,2}%/)
+})
+
+// Client feedback (2026-07-31): the sheet/cover background should be the
+// brand charcoal (#363C43), not near-black — applies to both faces, since
+// .sheet's background is shared by buildFrontHtml and buildBackHtml.
+test('the sheet and cover panel use the charcoal background, not near-black', () => {
+  const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  for (const html of [front, back]) {
+    assert.match(html, /\.sheet\s*\{[^}]*background:\s*var\(--charcoal\)/)
+    assert.doesNotMatch(html, /\.sheet\s*\{[^}]*background:\s*var\(--near-black\)/)
+  }
+  assert.match(front, /\.panel-cover\s*\{[^}]*background:\s*var\(--charcoal\)/)
+})
+
+test('cover big-word has breathing room below the brand row instead of sitting flush against it', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.panel-cover \.big-word\s*\{[^}]*margin-top:\s*22px/)
 })
 
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }

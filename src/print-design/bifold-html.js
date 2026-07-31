@@ -27,7 +27,7 @@ function sharedHead(palette) {
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'Barlow', sans-serif; }
-  .sheet { position: relative; width: 11.11in; height: 8.63in; overflow: hidden; background: var(--near-black); }
+  .sheet { position: relative; width: 11.11in; height: 8.63in; overflow: hidden; background: var(--charcoal); }
   .panel { position: absolute; top: 0.065in; width: 5.49in; height: 8.5in; overflow: hidden; }
   .photo { position: absolute; inset: 0; background-size: cover; z-index: 0; }
   .tint { position: absolute; inset: 0; z-index: 0; }
@@ -134,11 +134,11 @@ ${sharedHead(palette)}
   .qrbox { width: 77px; height: 77px; flex: 0 0 77px; background: var(--beige); border-radius: 6px; padding: 6px; box-shadow: 0 3px 14px rgba(0,0,0,0.4); }
   .qrbox img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .bfoot { font-size: 11px; color: rgba(230,213,181,0.75); line-height: 1.5; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
-  .panel-cover { background: var(--near-black); }
+  .panel-cover { background: var(--charcoal); }
   .panel-cover .content { padding: 0.22in 0; }
   .panel-cover .content > *:not(.pill) { padding-left: 0.22in; padding-right: 0.22in; }
   .eyebrow { margin-top: 12px; font-size: 14px; letter-spacing: 3px; font-weight: 700; color: var(--green); text-transform: uppercase; }
-  .panel-cover .big-word { font-size: 58px; margin-top: 0; }
+  .panel-cover .big-word { font-size: 58px; margin-top: 22px; }
   .panel-cover .big-word .bw-gold { color: var(--gold); }
   .panel-cover .big-word .bw-green { color: var(--green); }
   .panel-cover .tagline { margin-top: 14px; }
