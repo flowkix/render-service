@@ -2,14 +2,15 @@ const { buildEffectsCss } = require('./effects-template')
 const { loadFontFaceCss } = require('./fonts')
 const { escapeHtml, escapeAttr } = require('./html-escape')
 
-const WORDMARK = 'SNACKETNOW&reg;'
+const WORDMARK = 'SNACKET&reg;'
 const WM_TAG = 'Where Brands Show Up'
 
-function brandRow(logoUrl) {
+function brandRow(logoUrl, variant = 'full') {
+  const tagHtml = variant === 'full' ? `<div class="wm-tag">${WM_TAG}</div>` : ''
   return `
       <div class="brand-row">
         <div class="badge"><img src="${escapeAttr(logoUrl)}"></div>
-        <div class="wordmark-col"><div class="wordmark">${WORDMARK}</div><div class="wm-tag">${WM_TAG}</div></div>
+        <div class="wordmark-col"><div class="wordmark">${WORDMARK}</div>${tagHtml}</div>
       </div>`
 }
 
@@ -25,7 +26,7 @@ function sharedHead(palette) {
   .panel { position: absolute; top: 0.065in; width: 5.49in; height: 8.5in; overflow: hidden; }
   .photo { position: absolute; inset: 0; background-size: cover; z-index: 0; }
   .tint { position: absolute; inset: 0; z-index: 0; }
-  .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; padding: 0.125in; }
+  .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; padding: 0.22in; }
   .brand-row { display: flex; align-items: center; gap: 12px; }
   .badge { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex: 0 0 auto; background: #fff;
     box-shadow: 0 0 0 2.5px rgba(230,213,181,0.9); padding: 3.5px; }
@@ -46,8 +47,16 @@ function footerHtml(footerText) {
   return escapeHtml(footerText).replace(/\n/g, '<br>')
 }
 
+// content.*.bigWord may contain a literal newline for a 2-line poster statement
+// (e.g. "YOUR BRAND.\nDEPLOYED.") — same convention as footerText, render as <br>.
+function bigWordHtml(text) {
+  return escapeHtml(text).replace(/\n/g, '<br>')
+}
+
 function buildFrontHtml({ content, palette, photoUrls }) {
   const { backCover, cover } = content
+  const eyebrowHtml = cover.eyebrow ? `<div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>` : ''
+  const leadHtml = cover.taglineLead ? `<div class="lead">${escapeHtml(cover.taglineLead)}</div>` : ''
   return `<!doctype html>
 <html>
 <head>
@@ -68,15 +77,18 @@ ${sharedHead(palette)}
   .qrbox { width: 77px; height: 77px; flex: 0 0 77px; background: var(--beige); border-radius: 6px; padding: 6px; box-shadow: 0 3px 14px rgba(0,0,0,0.4); }
   .qrbox img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .bfoot { font-size: 11px; color: rgba(230,213,181,0.75); line-height: 1.5; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
-  .panel-cover .photo { background-image: url('${escapeAttr(photoUrls.coverPhotoUrl)}'); background-position: 52% center; }
-  .panel-cover .tint { background: linear-gradient(160deg, rgba(18,80,43,0.55) 0%, rgba(28,30,33,0.35) 45%, rgba(20,22,25,0.72) 100%); }
+  .panel-cover { background: var(--near-black); }
+  .panel-cover .content { padding: 0.22in 0; }
+  .panel-cover .content > *:not(.cover-hero) { padding-left: 0.22in; padding-right: 0.22in; }
   .eyebrow { margin-top: 12px; font-size: 14px; letter-spacing: 3px; font-weight: 700; color: var(--green); text-transform: uppercase; }
-  .panel-cover .big-word { font-size: 81px; }
+  .panel-cover .big-word { font-size: 58px; margin-top: 0; }
   .panel-cover .tagline { margin-top: 14px; }
   .panel-cover .tagline .lead { font-size: 23px; }
   .panel-cover .tagline .desc { font-size: 18px; max-width: 92%; }
-  .pill { margin-top: 20px; align-self: flex-start; background: rgba(230,213,181,0.92); color: var(--charcoal);
+  .pill { margin-top: 16px; align-self: flex-start; background: rgba(230,213,181,0.92); color: var(--charcoal);
     font-size: 13px; font-weight: 700; letter-spacing: 2px; padding: 10px 16px; border-radius: 30px; }
+  .cover-hero { margin-top: auto; width: 100%; line-height: 0; }
+  .cover-hero img { display: block; width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -88,7 +100,7 @@ ${sharedHead(palette)}
     <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
-      <div class="big-word">${escapeHtml(backCover.bigWord)}</div>
+      <div class="big-word">${bigWordHtml(backCover.bigWord)}</div>
       <div class="tagline"><div class="desc">${escapeHtml(backCover.taglineDesc)}</div></div>
       ${backCover.segs.map(seg => `<div class="seg"><b>${escapeHtml(seg.label)}</b>${escapeHtml(seg.pitch)}</div>`).join('\n      ')}
       <div class="cta-line">${escapeHtml(backCover.ctaLine)}</div>
@@ -100,15 +112,14 @@ ${sharedHead(palette)}
   </div>
 
   <div class="panel panel-cover">
-    <div class="photo"></div>
-    <div class="tint"></div>
     <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
-      <div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>
-      <div class="big-word">${escapeHtml(cover.bigWord)}</div>
-      <div class="tagline"><div class="lead">${escapeHtml(cover.taglineLead)}</div><div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
+      ${eyebrowHtml}
+      <div class="big-word">${bigWordHtml(cover.bigWord)}</div>
+      <div class="tagline">${leadHtml}<div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
       <div class="pill">${escapeHtml(cover.pillText)}</div>
+      <div class="cover-hero"><img src="${escapeAttr(photoUrls.coverPhotoUrl)}" alt=""></div>
     </div>
   </div>
 
@@ -131,8 +142,7 @@ ${sharedHead(palette)}
   .tagline { margin-top: 10px; }
   .tagline .lead { font-size: 19px; }
   .tagline .desc { font-size: 16px; max-width: 95%; }
-  .panel-left .photo { background-image: url('${escapeAttr(photoUrls.interiorLeftPhotoUrl)}'); background-position: 48% center;
-    transform: scale(1.15); transform-origin: 48% 72%; }
+  .panel-left .photo { background-image: url('${escapeAttr(photoUrls.interiorLeftPhotoUrl)}'); background-position: 48% center; }
   .intro { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.92); line-height: 1.4; width: 88%; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
   .glass { background: rgba(230,213,181,0.13); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
     border: 1px solid rgba(218,171,97,0.4); border-radius: 10px; padding: 14px; margin-top: 14px; width: 78%; }
@@ -145,8 +155,7 @@ ${sharedHead(palette)}
   .result-row { font-size: 11px; color: #fff; margin-top: 8px; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,0.4); width: 88%; }
   .result-row b { font-weight: 700; letter-spacing: 0.4px; }
   .result-row.c-green b { color: var(--green); } .result-row.c-gold b { color: var(--gold); }
-  .panel-right .photo { background-image: url('${escapeAttr(photoUrls.interiorRightPhotoUrl)}'); background-position: 53% center;
-    transform: scale(1.15); transform-origin: 53% 68%; }
+  .panel-right .photo { background-image: url('${escapeAttr(photoUrls.interiorRightPhotoUrl)}'); background-position: 53% center; }
   .row { background: rgba(230,213,181,0.15); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; width: 82%;
     padding: 8px 12px; margin-top: 8px; font-size: 11.5px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.4); line-height: 1.25; }
@@ -167,8 +176,8 @@ ${sharedHead(palette)}
     <div class="tint"></div>
     <div class="grain"></div>
     <div class="content">
-      ${brandRow(photoUrls.logoUrl)}
-      <div class="big-word">${escapeHtml(interiorLeft.bigWord)}</div>
+      ${brandRow(photoUrls.logoUrl, 'compact')}
+      <div class="big-word">${bigWordHtml(interiorLeft.bigWord)}</div>
       <div class="tagline"><div class="lead">${escapeHtml(interiorLeft.taglineLead)}</div><div class="desc">${escapeHtml(interiorLeft.taglineDesc)}</div></div>
       <div class="intro">${escapeHtml(interiorLeft.intro)}</div>
       <div class="glass">
@@ -188,8 +197,8 @@ ${sharedHead(palette)}
     <div class="tint"></div>
     <div class="grain"></div>
     <div class="content">
-      ${brandRow(photoUrls.logoUrl)}
-      <div class="big-word">${escapeHtml(interiorRight.bigWord)}</div>
+      ${brandRow(photoUrls.logoUrl, 'compact')}
+      <div class="big-word">${bigWordHtml(interiorRight.bigWord)}</div>
       <div class="tagline"><div class="lead">${escapeHtml(interiorRight.taglineLead)}</div><div class="desc">${escapeHtml(interiorRight.taglineDesc)}</div></div>
       ${interiorRight.layerRows.map(row => `<div class="row"><span class="rt">${escapeHtml(row.label)}</span>${escapeHtml(row.desc)}</div>`).join('\n      ')}
       <div class="fleet">
