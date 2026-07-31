@@ -81,7 +81,7 @@ ${sharedHead(palette)}
   .panel-cover .content { padding: 0.22in 0; }
   .panel-cover .content > *:not(.cover-hero) { padding-left: 0.22in; padding-right: 0.22in; }
   .eyebrow { margin-top: 12px; font-size: 14px; letter-spacing: 3px; font-weight: 700; color: var(--green); text-transform: uppercase; }
-  .panel-cover .big-word { font-size: 58px; }
+  .panel-cover .big-word { font-size: 58px; margin-top: 0; }
   .panel-cover .tagline { margin-top: 14px; }
   .panel-cover .tagline .lead { font-size: 23px; }
   .panel-cover .tagline .desc { font-size: 18px; max-width: 92%; }
@@ -112,6 +112,7 @@ ${sharedHead(palette)}
   </div>
 
   <div class="panel panel-cover">
+    <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
       ${eyebrowHtml}
