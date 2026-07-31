@@ -142,7 +142,7 @@ ${photoPlateCss}  .photo { position: absolute; ${photoRect}
   ${photoPlate}
   <div class="photo"></div>
   <div class="text">
-    <div class="kicker"><div class="ln"></div><span>SNACKETNOW</span><div class="ln"></div></div>
+    <div class="kicker"><div class="ln"></div><span>SNACKET</span><div class="ln"></div></div>
     <div class="h1"><span>Your Brand.</span><span class="g">Deployed.</span></div>
     <div class="rule"></div>
     <div class="sub">Physical brand presence.<br>On demand.</div>
