@@ -1,0 +1,23 @@
+{
+  "version": "v1",
+  "referenceImage": "https://nrawezmnyivbmatrugdv.supabase.co/storage/v1/object/public/snacket-assets/brand/ev-reference/snacket-mixobar-ev-referencia.png",
+  "referenceDescription": "SNACKET MixoBar EV on a white background, rear 3/4 view slightly elevated, both lift-up service doors raised open — a larger LEFT door and a smaller RIGHT door, showing 9 wood-handled faucet taps mounted inside the service bay",
+  "zones": {
+    "left_door_interior": {
+      "label": "Left lift-up door underside (larger panel)",
+      "renderMode": "logo",
+      "fragment": "The larger LEFT lift-up service door is raised open; its flat underside panel (light wood-plank texture) shows a circular SNACKET logo. Replace that logo with the IMAGE B logo, large and centered on the panel, following the panel's tilt and perspective. Keep the wood texture and door hinges/gas struts intact."
+    },
+    "right_door_interior": {
+      "label": "Right lift-up door underside (smaller panel)",
+      "renderMode": "logo",
+      "fragment": "The smaller RIGHT lift-up service door is raised open, to the right of the left door; its flat underside panel (same light wood-plank texture) shows a circular SNACKET logo. Replace that logo with the IMAGE B logo, sized to fit this smaller panel, following the panel's tilt and perspective. Keep the wood texture and door hardware intact."
+    },
+    "driver_cab_panel": {
+      "label": "Driver cab door panel",
+      "renderMode": "logo",
+      "hardConstraints": ["no_leftover_snacket"],
+      "fragment": "On the driver-side cab door, near the front of the vehicle, there is a circular SNACKET logo with the text \"MIXO BAR\" printed directly below it. Replace ONLY the circular logo above the text with the IMAGE B logo, at the same size and position, respecting the door surface curvature and lighting. Do NOT alter, remove, or cover the \"MIXO BAR\" text beneath it — that identifies the vehicle model, not the brand, and must stay exactly as-is."
+    }
+  }
+}
