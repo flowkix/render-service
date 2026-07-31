@@ -80,4 +80,22 @@ test('.content padding gives real cushion past the 0.125in safety line, not exac
   assert.doesNotMatch(html, /\.content\s*\{[^}]*padding:\s*0\.125in/)
 })
 
+test('the wordmark is SNACKET (not SNACKETNOW)', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /class="wordmark">SNACKET&reg;</)
+  assert.doesNotMatch(html, /SNACKETNOW/)
+})
+
+test('interior panels use a compact brand row (no repeated tagline)', () => {
+  const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const wmTagCount = (back.match(/class="wm-tag"/g) || []).length
+  assert.equal(wmTagCount, 0, 'interior (buildBackHtml) panels should render zero wm-tag lines')
+})
+
+test('front cover and back cover keep the full brand row (with tagline)', () => {
+  const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const wmTagCount = (front.match(/class="wm-tag"/g) || []).length
+  assert.equal(wmTagCount, 2, 'buildFrontHtml renders 2 panels (back cover + cover), both full lockup')
+})
+
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }

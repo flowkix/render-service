@@ -2,14 +2,15 @@ const { buildEffectsCss } = require('./effects-template')
 const { loadFontFaceCss } = require('./fonts')
 const { escapeHtml, escapeAttr } = require('./html-escape')
 
-const WORDMARK = 'SNACKETNOW&reg;'
+const WORDMARK = 'SNACKET&reg;'
 const WM_TAG = 'Where Brands Show Up'
 
-function brandRow(logoUrl) {
+function brandRow(logoUrl, variant = 'full') {
+  const tagHtml = variant === 'full' ? `<div class="wm-tag">${WM_TAG}</div>` : ''
   return `
       <div class="brand-row">
         <div class="badge"><img src="${escapeAttr(logoUrl)}"></div>
-        <div class="wordmark-col"><div class="wordmark">${WORDMARK}</div><div class="wm-tag">${WM_TAG}</div></div>
+        <div class="wordmark-col"><div class="wordmark">${WORDMARK}</div>${tagHtml}</div>
       </div>`
 }
 
@@ -167,7 +168,7 @@ ${sharedHead(palette)}
     <div class="tint"></div>
     <div class="grain"></div>
     <div class="content">
-      ${brandRow(photoUrls.logoUrl)}
+      ${brandRow(photoUrls.logoUrl, 'compact')}
       <div class="big-word">${escapeHtml(interiorLeft.bigWord)}</div>
       <div class="tagline"><div class="lead">${escapeHtml(interiorLeft.taglineLead)}</div><div class="desc">${escapeHtml(interiorLeft.taglineDesc)}</div></div>
       <div class="intro">${escapeHtml(interiorLeft.intro)}</div>
@@ -188,7 +189,7 @@ ${sharedHead(palette)}
     <div class="tint"></div>
     <div class="grain"></div>
     <div class="content">
-      ${brandRow(photoUrls.logoUrl)}
+      ${brandRow(photoUrls.logoUrl, 'compact')}
       <div class="big-word">${escapeHtml(interiorRight.bigWord)}</div>
       <div class="tagline"><div class="lead">${escapeHtml(interiorRight.taglineLead)}</div><div class="desc">${escapeHtml(interiorRight.taglineDesc)}</div></div>
       ${interiorRight.layerRows.map(row => `<div class="row"><span class="rt">${escapeHtml(row.label)}</span>${escapeHtml(row.desc)}</div>`).join('\n      ')}
