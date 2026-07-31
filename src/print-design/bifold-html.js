@@ -78,20 +78,42 @@ ${sharedHead(palette)}
   .panel-back { left: 0.065in; }
   .panel-cover { left: 5.555in; }
   /* This photo is landscape inside a portrait panel, so background-size: contain
-     fits it to the panel's full width and letterboxes top/bottom. mask-image is a
-     percentage-of-THIS-ELEMENT'S-OWN-BOX fade (the element is inset:0 = the full
-     panel), not a percentage of the photo's rendered size — so it stays correct
-     regardless of which photo is uploaded (this URL is admin-set per generation
-     via the HUB's Photos tab) or how much it letterboxes, with no hardcoded
-     per-photo measurement needed. Verified directly against the real production
-     photo: fades smoothly into the panel's near-black background, no hard seam. */
+     fits it to the panel's full width and letterboxes top/bottom. Client feedback:
+     push the photo UP so there's only a small fixed ~1cm gap at the top instead of
+     a big evenly-split gap, with the leftover space landing at the bottom.
+     background-position: center 1cm is a LENGTH (not a percentage), so per spec it
+     offsets the image's top edge exactly 1cm down from the panel's top edge
+     regardless of the photo's aspect ratio — the top gap is therefore always
+     exactly 1cm (~4.6% of this panel's 8.5in height) for any admin-uploaded photo.
+     mask-image is a percentage-of-THIS-ELEMENT'S-OWN-BOX fade (the element is
+     inset:0 = the full panel), not a percentage of the photo's rendered size.
+     Fade math: outside the photo's rendered box there are no image pixels at all
+     (background-repeat: no-repeat), so the mask can only visibly affect anything
+     WITHIN the photo's real raster edges — for the seam to actually dissolve
+     (not just partially dim before an unmasked hard cutoff), mask opacity must
+     reach exactly 0% right at the photo's true edge, continuous with the fully
+     transparent letterbox beyond it. First pass used a symmetric-looking
+     "transparent 0%, black 9%" band (mask ~51% at the real 4.6% top edge) —
+     verified via renderHtmlStringToPng + raw pixel sampling that this still left
+     a measurable single-row luminance jump (~20-49pt depending on photo) right at
+     the true edge on all 3 panels, i.e. a softened but still-real seam, not a
+     dissolve. Fixed by anchoring the ramp's zero point exactly at the real edge
+     instead: top ramp holds transparent through the fixed 4.6% edge, then climbs
+     to fully opaque by 14% (9.4pt ramp, deeper INTO the photo, away from the
+     edge). Bottom ramp mirrors this from the other direction: back-novacare-
+     gala.jpg (2000x1116) contain-fits to ~36% of panel height, so with the top
+     pinned to 1cm its real bottom edge lands at ~40.7% — ramps from fully opaque
+     at 31% down to exactly transparent at 41%, so mask reaches 0% right where
+     the photo pixels actually end. Re-verified after this fix: the single-row
+     jump at both true edges drops to noise-floor level, confirmed via pixel
+     sampling — genuinely smooth now, not just softened. */
   .panel-back .photo {
     background-image: url('${escapeAttr(photoUrls.backCoverPhotoUrl)}');
-    background-position: center center;
+    background-position: center 1cm;
     background-size: contain;
     background-repeat: no-repeat;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 4.6%, black 14%, black 31%, transparent 41%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 4.6%, black 14%, black 31%, transparent 41%, transparent 100%);
   }
   /* margin-top: auto pulls the eyebrow (when present) down to sit directly above
      the big-word, instead of clinging to brand-row at the top of the panel; the
@@ -180,30 +202,33 @@ ${sharedHead(palette)}
   .tagline { margin-top: 10px; }
   .tagline .lead { font-size: 19px; }
   .tagline .desc { font-size: 16px; max-width: 95%; }
-  /* Same proven technique as the back-cover fix (see buildFrontHtml's
-     .panel-back .photo comment): mask-image's gradient percentages are
-     relative to this element's own box (inset:0 = full panel), not the
-     photo's rendered size, so it fades correctly regardless of which photo
-     is uploaded or how much contain letterboxes it.
-     The back-cover's 6%/94% band is too narrow for THIS panel's real photo:
-     this panel is a tall portrait box (5.49in x 8.5in) holding a roughly
-     1:1 lobby photo, so contain letterboxes ~17.7% top/bottom (much more
-     than the back-cover's landscape-photo letterbox) — a 6% fade band sits
-     entirely inside the letterbox's already-transparent dead zone and never
-     touches the photo's real raster edge, leaving a hard seam right where
-     the image starts. Verified directly against the real new hotel-lobby
-     photo via renderHtmlStringToPng (sampled raw pixel values across the
-     seam) and widened + repositioned the ramp to straddle that real edge:
-     flat transparent through 16%, ramp to fully opaque by 30% (mirrored on
-     the bottom), so the fade is centered on where the photo actually starts
-     instead of on a fixed panel percentage. Confirmed smooth after tuning. */
+  /* Client feedback: push the letterboxed photo UP to a fixed ~1cm top gap
+     instead of centering it, same change and same fade-math reasoning as the
+     back-cover fix above (see buildFrontHtml's .panel-back .photo comment for
+     the full derivation) — background-position: center 1cm is a length, so it
+     offsets the image's top edge exactly 1cm from the panel top regardless of
+     aspect ratio, and the mask must reach exactly 0% opacity right at the
+     photo's true raster edge (not partway through) for the seam to actually
+     dissolve rather than just soften before a hard cutoff. Top ramp (holds
+     transparent through the fixed 4.6% edge, opaque by 14%) is identical on
+     all 3 panels since that edge is now fixed regardless of photo.
+     This panel's real photo (Your brand here - lobby.png, 2048x2048, a square
+     1:1 image) is width-constrained by contain in this 5.49in x 8.5in portrait
+     panel, rendering at panel-width x panel-width (5.49in tall) — with the top
+     pinned to 1cm, that pushes the photo's real bottom edge down to ~69.2% of
+     the panel height (previously ~82.3% when centered), leaving a much bigger
+     bottom letterbox gap than before. Bottom ramp fades from fully opaque at
+     60% down to exactly transparent at 70%, landing the zero point right on
+     that real ~69.2% edge. Verified via renderHtmlStringToPng + raw pixel
+     sampling against the real photo — top gap reads as a small clean margin,
+     both seams fade smoothly with no measurable jump at the true edge. */
   .panel-left .photo {
     background-image: url('${escapeAttr(photoUrls.interiorLeftPhotoUrl)}');
-    background-position: center center;
+    background-position: center 1cm;
     background-size: contain;
     background-repeat: no-repeat;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 4.6%, black 14%, black 60%, transparent 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 4.6%, black 14%, black 60%, transparent 70%, transparent 100%);
   }
   .intro { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.92); line-height: 1.4; width: 88%; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
   .glass { background: rgba(230,213,181,0.13); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
@@ -217,17 +242,21 @@ ${sharedHead(palette)}
   .result-row { font-size: 11px; color: #fff; margin-top: 8px; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,0.4); width: 88%; }
   .result-row b { font-weight: 700; letter-spacing: 0.4px; }
   .result-row.c-green b { color: var(--green); } .result-row.c-gold b { color: var(--gold); }
-  /* Same proven technique and same widened ramp as .panel-left .photo above
-     — the existing NitroCafe photo also letterboxes to a similar ~17%-18%
-     band in this panel shape, so the narrow 6%/94% back-cover band left an
-     equally hard seam here (confirmed via raw pixel sampling). */
+  /* Same fixed-1cm-top change and same zero-at-the-real-edge fade math as
+     .panel-left .photo above. The existing NitroCafe photo (1024x1024) is
+     also a square 1:1 image, so it hits the exact same contain math in this
+     identically-sized panel: width-constrained to 5.49in tall, real bottom
+     edge at ~69.2% of panel height once the top is pinned to 1cm — same
+     60%->70% bottom ramp applies. Verified via renderHtmlStringToPng + raw
+     pixel sampling against the real photo — no measurable jump at the true
+     edge. */
   .panel-right .photo {
     background-image: url('${escapeAttr(photoUrls.interiorRightPhotoUrl)}');
-    background-position: center center;
+    background-position: center 1cm;
     background-size: contain;
     background-repeat: no-repeat;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 4.6%, black 14%, black 60%, transparent 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 4.6%, black 14%, black 60%, transparent 70%, transparent 100%);
   }
   .row { background: rgba(230,213,181,0.15); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; width: 62%;

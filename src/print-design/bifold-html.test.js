@@ -202,6 +202,50 @@ test('interior panels use contain + mask-image letterbox, not a hard cover crop'
   assert.match(html, /\.panel-right \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
 })
 
+// Client feedback (2026-07-31): push the letterboxed photo UP to a fixed ~1cm
+// top gap instead of centering it, so the leftover letterbox space lands at
+// the bottom instead of being split evenly. background-position: center 1cm
+// is a CSS length, not a percentage, so it offsets the image's top edge by
+// exactly 1cm regardless of the photo's aspect ratio (verified via
+// renderHtmlStringToPng + raw pixel sampling: the real photo edge lands right
+// at the predicted 4.6%-of-panel-height mark on all 3 panels).
+test('back-cover and interior photos are pushed to a fixed 1cm top margin instead of centered', () => {
+  const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(front, /\.panel-back \.photo\s*\{[^}]*background-position:\s*center 1cm/)
+  assert.match(back, /\.panel-left \.photo\s*\{[^}]*background-position:\s*center 1cm/)
+  assert.match(back, /\.panel-right \.photo\s*\{[^}]*background-position:\s*center 1cm/)
+  assert.doesNotMatch(front, /\.panel-back \.photo\s*\{[^}]*background-position:\s*center center/)
+  assert.doesNotMatch(back, /\.panel-left \.photo\s*\{[^}]*background-position:\s*center center/)
+  assert.doesNotMatch(back, /\.panel-right \.photo\s*\{[^}]*background-position:\s*center center/)
+})
+
+// The mask must reach exactly 0% opacity right at the photo's real raster
+// edge for the seam to actually dissolve rather than just soften before a
+// hard cutoff (see the derivation in buildFrontHtml's .panel-back .photo
+// comment). Top ramp is identical on all 3 panels since the 1cm top offset is
+// now fixed regardless of photo; bottom ramp differs per panel because the
+// bottom letterbox gap still depends on each photo's real aspect ratio.
+test('the fade ramps hold transparent through the fixed ~4.6% top edge, not fading in immediately', () => {
+  const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  for (const [html, selector] of [[front, '\\.panel-back \\.photo'], [back, '\\.panel-left \\.photo'], [back, '\\.panel-right \\.photo']]) {
+    const re = new RegExp(selector + '\\s*\\{[^}]*mask-image:\\s*linear-gradient\\(to bottom, transparent 0%, transparent 4\\.6%, black 14%')
+    assert.match(html, re, `${selector} should hold transparent through the fixed 4.6% edge before ramping to opaque`)
+  }
+})
+
+test('back-cover bottom fade ramp is repositioned for the new, larger bottom letterbox gap', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.panel-back \.photo\s*\{[^}]*black 31%, transparent 41%/)
+})
+
+test('interior panels bottom fade ramp is repositioned for the new, larger bottom letterbox gap', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.panel-left \.photo\s*\{[^}]*black 60%, transparent 70%/)
+  assert.match(html, /\.panel-right \.photo\s*\{[^}]*black 60%, transparent 70%/)
+})
+
 test('interior-right renders no taglineDesc markup when empty, renders it when present', () => {
   const empty = { ...FIXTURE_CONTENT, interiorRight: { ...FIXTURE_CONTENT.interiorRight, taglineDesc: '' } }
   const htmlEmpty = buildBackHtml({ content: empty, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
