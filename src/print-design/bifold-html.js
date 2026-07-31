@@ -180,10 +180,34 @@ ${sharedHead(palette)}
   .tagline { margin-top: 10px; }
   .tagline .lead { font-size: 19px; }
   .tagline .desc { font-size: 16px; max-width: 95%; }
-  .panel-left .photo { background-image: url('${escapeAttr(photoUrls.interiorLeftPhotoUrl)}'); background-position: 48% center; }
+  /* Same proven technique as the back-cover fix (see buildFrontHtml's
+     .panel-back .photo comment): mask-image's gradient percentages are
+     relative to this element's own box (inset:0 = full panel), not the
+     photo's rendered size, so it fades correctly regardless of which photo
+     is uploaded or how much contain letterboxes it.
+     The back-cover's 6%/94% band is too narrow for THIS panel's real photo:
+     this panel is a tall portrait box (5.49in x 8.5in) holding a roughly
+     1:1 lobby photo, so contain letterboxes ~17.7% top/bottom (much more
+     than the back-cover's landscape-photo letterbox) — a 6% fade band sits
+     entirely inside the letterbox's already-transparent dead zone and never
+     touches the photo's real raster edge, leaving a hard seam right where
+     the image starts. Verified directly against the real new hotel-lobby
+     photo via renderHtmlStringToPng (sampled raw pixel values across the
+     seam) and widened + repositioned the ramp to straddle that real edge:
+     flat transparent through 16%, ramp to fully opaque by 30% (mirrored on
+     the bottom), so the fade is centered on where the photo actually starts
+     instead of on a fixed panel percentage. Confirmed smooth after tuning. */
+  .panel-left .photo {
+    background-image: url('${escapeAttr(photoUrls.interiorLeftPhotoUrl)}');
+    background-position: center center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
+  }
   .intro { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.92); line-height: 1.4; width: 88%; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
   .glass { background: rgba(230,213,181,0.13); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
-    border: 1px solid rgba(218,171,97,0.4); border-radius: 10px; padding: 14px; margin-top: 14px; width: 78%; }
+    border: 1px solid rgba(218,171,97,0.4); border-radius: 10px; padding: 14px; margin-top: 14px; width: 60%; }
   .col-title { font-size: 12px; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 5px; }
   .is .col-title { color: var(--green); } .isnot .col-title { color: rgba(230,213,181,0.6); margin-top: 10px; }
   .glass ul { list-style: none; margin: 0; padding: 0; }
@@ -193,9 +217,20 @@ ${sharedHead(palette)}
   .result-row { font-size: 11px; color: #fff; margin-top: 8px; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,0.4); width: 88%; }
   .result-row b { font-weight: 700; letter-spacing: 0.4px; }
   .result-row.c-green b { color: var(--green); } .result-row.c-gold b { color: var(--gold); }
-  .panel-right .photo { background-image: url('${escapeAttr(photoUrls.interiorRightPhotoUrl)}'); background-position: 53% center; }
+  /* Same proven technique and same widened ramp as .panel-left .photo above
+     — the existing NitroCafe photo also letterboxes to a similar ~17%-18%
+     band in this panel shape, so the narrow 6%/94% back-cover band left an
+     equally hard seam here (confirmed via raw pixel sampling). */
+  .panel-right .photo {
+    background-image: url('${escapeAttr(photoUrls.interiorRightPhotoUrl)}');
+    background-position: center center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 16%, black 30%, black 70%, transparent 84%, transparent 100%);
+  }
   .row { background: rgba(230,213,181,0.15); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; width: 82%;
+    border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; width: 62%;
     padding: 8px 12px; margin-top: 8px; font-size: 11.5px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.4); line-height: 1.25; }
   .row:first-of-type { margin-top: 52px; }
   .row .rt { font-weight: 700; display: block; }
@@ -237,7 +272,7 @@ ${sharedHead(palette)}
     <div class="content">
       ${brandRow(photoUrls.logoUrl, 'compact')}
       <div class="big-word">${bigWordHtml(interiorRight.bigWord)}</div>
-      <div class="tagline"><div class="lead">${escapeHtml(interiorRight.taglineLead)}</div><div class="desc">${escapeHtml(interiorRight.taglineDesc)}</div></div>
+      <div class="tagline"><div class="lead">${escapeHtml(interiorRight.taglineLead)}</div>${interiorRight.taglineDesc ? `<div class="desc">${escapeHtml(interiorRight.taglineDesc)}</div>` : ''}</div>
       ${interiorRight.layerRows.map(row => `<div class="row"><span class="rt">${escapeHtml(row.label)}</span>${escapeHtml(row.desc)}</div>`).join('\n      ')}
       <div class="fleet">
         ${interiorRight.fleetCards.map(card => `<div class="fleet-card"><b>${escapeHtml(card.name)}</b><span>${escapeHtml(card.desc)}</span></div>`).join('\n        ')}

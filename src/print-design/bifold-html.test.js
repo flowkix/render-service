@@ -194,4 +194,30 @@ test('back-cover photo uses contain + an aspect-ratio-agnostic mask-image fade, 
   assert.doesNotMatch(html, /::before|::after/)
 })
 
+test('interior panels use contain + mask-image letterbox, not a hard cover crop', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.panel-left \.photo\s*\{[^}]*background-size:\s*contain/)
+  assert.match(html, /\.panel-left \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
+  assert.match(html, /\.panel-right \.photo\s*\{[^}]*background-size:\s*contain/)
+  assert.match(html, /\.panel-right \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
+})
+
+test('interior-right renders no taglineDesc markup when empty, renders it when present', () => {
+  const empty = { ...FIXTURE_CONTENT, interiorRight: { ...FIXTURE_CONTENT.interiorRight, taglineDesc: '' } }
+  const htmlEmpty = buildBackHtml({ content: empty, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const rightPanelEmpty = htmlEmpty.split('panel-right"').pop()
+  assert.doesNotMatch(rightPanelEmpty, /class="desc"/)
+
+  const withDesc = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(withDesc, /class="desc">Built in layers\./)
+})
+
+test('interior-left .glass and interior-right .row are narrower than the old 78%/82% to show more photo', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.doesNotMatch(html, /\.glass\s*\{[^}]*width:\s*78%/)
+  assert.doesNotMatch(html, /\.row\s*\{[^}]*width:\s*82%/)
+  assert.match(html, /\.glass\s*\{[^}]*width:\s*\d{1,2}%/)
+  assert.match(html, /\.row\s*\{[^}]*width:\s*\d{1,2}%/)
+})
+
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }
