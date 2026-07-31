@@ -126,4 +126,9 @@ test('cover still renders eyebrow/lead when those fields are non-empty', () => {
   assert.match(html, /class="lead">Your Brand\.</)
 })
 
+test('interior photos are not zoomed past their natural frame', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.doesNotMatch(html, /transform:\s*scale\(1\.15\)/)
+})
+
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }
