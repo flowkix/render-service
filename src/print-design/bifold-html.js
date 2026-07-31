@@ -112,9 +112,9 @@ ${sharedHead(palette)}
     <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
-      <div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>
+      ${cover.eyebrow ? `<div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>` : ''}
       <div class="big-word">${bigWordHtml(cover.bigWord)}</div>
-      <div class="tagline"><div class="lead">${escapeHtml(cover.taglineLead)}</div><div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
+      <div class="tagline">${cover.taglineLead ? `<div class="lead">${escapeHtml(cover.taglineLead)}</div>` : ''}<div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
       <div class="pill">${escapeHtml(cover.pillText)}</div>
     </div>
   </div>

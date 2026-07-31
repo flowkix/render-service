@@ -109,4 +109,21 @@ test('bigWord with an embedded newline renders as <br>, single-line bigWord rend
   assert.doesNotMatch(back, /SHOW UP\.<br>/)
 })
 
+test('cover renders no eyebrow/lead markup when those fields are empty', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  // FIXTURE_CONTENT.cover.eyebrow === '' and taglineLead === ''
+  assert.doesNotMatch(html, /class="eyebrow"/)
+  assert.doesNotMatch(html, /class="lead"/)
+})
+
+test('cover still renders eyebrow/lead when those fields are non-empty', () => {
+  const withEyebrow = {
+    ...FIXTURE_CONTENT,
+    cover: { ...FIXTURE_CONTENT.cover, eyebrow: 'Mobile Experiential Media', taglineLead: 'Your Brand.' },
+  }
+  const html = buildFrontHtml({ content: withEyebrow, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /class="eyebrow">Mobile Experiential Media</)
+  assert.match(html, /class="lead">Your Brand\.</)
+})
+
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }
