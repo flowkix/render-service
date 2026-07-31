@@ -47,6 +47,12 @@ function footerHtml(footerText) {
   return escapeHtml(footerText).replace(/\n/g, '<br>')
 }
 
+// content.*.bigWord may contain a literal newline for a 2-line poster statement
+// (e.g. "YOUR BRAND.\nDEPLOYED.") — same convention as footerText, render as <br>.
+function bigWordHtml(text) {
+  return escapeHtml(text).replace(/\n/g, '<br>')
+}
+
 function buildFrontHtml({ content, palette, photoUrls }) {
   const { backCover, cover } = content
   return `<!doctype html>
@@ -89,7 +95,7 @@ ${sharedHead(palette)}
     <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
-      <div class="big-word">${escapeHtml(backCover.bigWord)}</div>
+      <div class="big-word">${bigWordHtml(backCover.bigWord)}</div>
       <div class="tagline"><div class="desc">${escapeHtml(backCover.taglineDesc)}</div></div>
       ${backCover.segs.map(seg => `<div class="seg"><b>${escapeHtml(seg.label)}</b>${escapeHtml(seg.pitch)}</div>`).join('\n      ')}
       <div class="cta-line">${escapeHtml(backCover.ctaLine)}</div>
@@ -107,7 +113,7 @@ ${sharedHead(palette)}
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
       <div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>
-      <div class="big-word">${escapeHtml(cover.bigWord)}</div>
+      <div class="big-word">${bigWordHtml(cover.bigWord)}</div>
       <div class="tagline"><div class="lead">${escapeHtml(cover.taglineLead)}</div><div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
       <div class="pill">${escapeHtml(cover.pillText)}</div>
     </div>
@@ -169,7 +175,7 @@ ${sharedHead(palette)}
     <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl, 'compact')}
-      <div class="big-word">${escapeHtml(interiorLeft.bigWord)}</div>
+      <div class="big-word">${bigWordHtml(interiorLeft.bigWord)}</div>
       <div class="tagline"><div class="lead">${escapeHtml(interiorLeft.taglineLead)}</div><div class="desc">${escapeHtml(interiorLeft.taglineDesc)}</div></div>
       <div class="intro">${escapeHtml(interiorLeft.intro)}</div>
       <div class="glass">
@@ -190,7 +196,7 @@ ${sharedHead(palette)}
     <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl, 'compact')}
-      <div class="big-word">${escapeHtml(interiorRight.bigWord)}</div>
+      <div class="big-word">${bigWordHtml(interiorRight.bigWord)}</div>
       <div class="tagline"><div class="lead">${escapeHtml(interiorRight.taglineLead)}</div><div class="desc">${escapeHtml(interiorRight.taglineDesc)}</div></div>
       ${interiorRight.layerRows.map(row => `<div class="row"><span class="rt">${escapeHtml(row.label)}</span>${escapeHtml(row.desc)}</div>`).join('\n      ')}
       <div class="fleet">

@@ -98,4 +98,15 @@ test('front cover and back cover keep the full brand row (with tagline)', () => 
   assert.equal(wmTagCount, 2, 'buildFrontHtml renders 2 panels (back cover + cover), both full lockup')
 })
 
+test('bigWord with an embedded newline renders as <br>, single-line bigWord renders unchanged', () => {
+  const twoLine = { ...FIXTURE_CONTENT, cover: { ...FIXTURE_CONTENT.cover, bigWord: 'YOUR BRAND.\nDEPLOYED.' } }
+  const html = buildFrontHtml({ content: twoLine, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /YOUR BRAND\.<br>DEPLOYED\./)
+
+  const oneLine = { ...FIXTURE_CONTENT, interiorLeft: { ...FIXTURE_CONTENT.interiorLeft, bigWord: 'SHOW UP.' } }
+  const back = buildBackHtml({ content: oneLine, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(back, /class="big-word">SHOW UP\.</)
+  assert.doesNotMatch(back, /SHOW UP\.<br>/)
+})
+
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }
