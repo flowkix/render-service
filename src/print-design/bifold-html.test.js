@@ -86,6 +86,18 @@ test('the wordmark is SNACKET (not SNACKETNOW)', () => {
   assert.doesNotMatch(html, /SNACKETNOW/)
 })
 
+test('compact brandRow (interior panels) renders wordmark only, no badge', () => {
+  const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.doesNotMatch(back, /class="badge"/, 'interior panels should have no badge element')
+  assert.match(back, /class="wordmark">SNACKET&reg;</, 'interior panels should still render wordmark')
+})
+
+test('full brandRow (front/back covers) still renders the badge', () => {
+  const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const badgeCount = (front.match(/class="badge"/g) || []).length
+  assert.equal(badgeCount, 2, 'buildFrontHtml renders 2 panels (back cover + cover), both should keep the badge')
+})
+
 test('interior panels use a compact brand row (no repeated tagline)', () => {
   const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   const wmTagCount = (back.match(/class="wm-tag"/g) || []).length

@@ -6,11 +6,16 @@ const WORDMARK = 'SNACKET&reg;'
 const WM_TAG = 'Where Brands Show Up'
 
 function brandRow(logoUrl, variant = 'full') {
-  const tagHtml = variant === 'full' ? `<div class="wm-tag">${WM_TAG}</div>` : ''
-  return `
+  if (variant === 'full') {
+    return `
       <div class="brand-row">
         <div class="badge"><img src="${escapeAttr(logoUrl)}"></div>
-        <div class="wordmark-col"><div class="wordmark">${WORDMARK}</div>${tagHtml}</div>
+        <div class="wordmark-col"><div class="wordmark">${WORDMARK}</div><div class="wm-tag">${WM_TAG}</div></div>
+      </div>`
+  }
+  return `
+      <div class="brand-row brand-row--compact">
+        <div class="wordmark">${WORDMARK}</div>
       </div>`
 }
 
