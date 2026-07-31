@@ -58,10 +58,18 @@ function bigWordHtml(text) {
   return escapeHtml(text).replace(/\n/g, '<br>')
 }
 
+// Cover-panel-only variant: alternates the SNACKET gold/green accent colors
+// per line instead of the shared plain-white bigWordHtml() used elsewhere.
+function coverBigWordHtml(text) {
+  const colors = ['gold', 'green']
+  return escapeHtml(text).split('\n').map((line, i) => `<span class="bw-${colors[i % colors.length]}">${line}</span>`).join('<br>')
+}
+
 function buildFrontHtml({ content, palette, photoUrls }) {
   const { backCover, cover } = content
   const eyebrowHtml = cover.eyebrow ? `<div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>` : ''
   const leadHtml = cover.taglineLead ? `<div class="lead">${escapeHtml(cover.taglineLead)}</div>` : ''
+  const backEyebrowHtml = backCover.eyebrow ? `<div class="back-eyebrow">${escapeHtml(backCover.eyebrow)}</div>` : ''
   return `<!doctype html>
 <html>
 <head>
@@ -69,7 +77,35 @@ ${sharedHead(palette)}
 <style>
   .panel-back { left: 0.065in; }
   .panel-cover { left: 5.555in; }
-  .panel-back .photo { background-image: url('${escapeAttr(photoUrls.backCoverPhotoUrl)}'); background-position: 19% center; }
+  /* This photo is landscape inside a portrait panel, so background-size: contain
+     fits it to the panel's full width and letterboxes top/bottom (~32%/~68% of
+     panel height for the current production asset, not a fixed number — it
+     tracks whatever the real photo's aspect ratio produces).
+     Note: a CSS mask-image (linear-gradient alpha fade) was tried here first but
+     renders as a hard binary cutoff in this Puppeteer/Chromium build when masking
+     an element that has a background-image (confirmed via isolated test: the
+     identical gradient fades smoothly on a solid-color background but hard-cuts
+     on a background-image one) — so the soft seam is done instead with two
+     ::before/::after gradient strips painted on top of the photo, positioned at
+     the photo's real measured edges, blending into the panel's near-black. */
+  .panel-back .photo {
+    background-image: url('${escapeAttr(photoUrls.backCoverPhotoUrl)}');
+    background-position: center center;
+    background-size: contain;
+    background-repeat: no-repeat;
+  }
+  .panel-back .photo::before, .panel-back .photo::after {
+    content: ''; position: absolute; left: 0; right: 0; height: 11%;
+  }
+  .panel-back .photo::before { top: 26.5%; background: linear-gradient(to bottom, var(--near-black) 0%, transparent 100%); }
+  .panel-back .photo::after { top: 62.5%; background: linear-gradient(to bottom, transparent 0%, var(--near-black) 100%); }
+  /* margin-top: auto pulls the eyebrow (when present) down to sit directly above
+     the big-word, instead of clinging to brand-row at the top of the panel; the
+     adjacent-sibling override then keeps big-word hugging right under it. When
+     no eyebrow is rendered, .big-word falls back to its own shared margin-top:
+     auto and the layout is unchanged from before this feature existed. */
+  .back-eyebrow { margin-top: auto; font-size: 12px; letter-spacing: 2px; font-weight: 700; color: var(--gold); text-transform: uppercase; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+  .back-eyebrow + .big-word { margin-top: 6px; }
   .panel-back .tint { background: linear-gradient(180deg, rgba(18,80,43,0.30) 0%, rgba(20,22,25,0.50) 38%, rgba(15,16,18,0.86) 100%); }
   .panel-back .big-word { font-size: 70px; }
   .panel-back .tagline { margin-top: 10px; }
@@ -84,13 +120,15 @@ ${sharedHead(palette)}
   .bfoot { font-size: 11px; color: rgba(230,213,181,0.75); line-height: 1.5; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
   .panel-cover { background: var(--near-black); }
   .panel-cover .content { padding: 0.22in 0; }
-  .panel-cover .content > *:not(.cover-hero) { padding-left: 0.22in; padding-right: 0.22in; }
+  .panel-cover .content > *:not(.pill) { padding-left: 0.22in; padding-right: 0.22in; }
   .eyebrow { margin-top: 12px; font-size: 14px; letter-spacing: 3px; font-weight: 700; color: var(--green); text-transform: uppercase; }
   .panel-cover .big-word { font-size: 58px; margin-top: 0; }
+  .panel-cover .big-word .bw-gold { color: var(--gold); }
+  .panel-cover .big-word .bw-green { color: var(--green); }
   .panel-cover .tagline { margin-top: 14px; }
   .panel-cover .tagline .lead { font-size: 23px; }
   .panel-cover .tagline .desc { font-size: 18px; max-width: 92%; }
-  .pill { margin-top: 16px; align-self: flex-start; background: rgba(230,213,181,0.92); color: var(--charcoal);
+  .pill { margin-top: 16px; margin-left: 0.22in; align-self: flex-start; background: rgba(230,213,181,0.92); color: var(--charcoal);
     font-size: 13px; font-weight: 700; letter-spacing: 2px; padding: 10px 16px; border-radius: 30px; }
   .cover-hero { margin-top: auto; width: 100%; line-height: 0; }
   .cover-hero img { display: block; width: 100%; height: auto; }
@@ -105,6 +143,7 @@ ${sharedHead(palette)}
     <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
+      ${backEyebrowHtml}
       <div class="big-word">${bigWordHtml(backCover.bigWord)}</div>
       <div class="tagline"><div class="desc">${escapeHtml(backCover.taglineDesc)}</div></div>
       ${backCover.segs.map(seg => `<div class="seg"><b>${escapeHtml(seg.label)}</b>${escapeHtml(seg.pitch)}</div>`).join('\n      ')}
@@ -121,7 +160,7 @@ ${sharedHead(palette)}
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
       ${eyebrowHtml}
-      <div class="big-word">${bigWordHtml(cover.bigWord)}</div>
+      <div class="big-word">${coverBigWordHtml(cover.bigWord)}</div>
       <div class="tagline">${leadHtml}<div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
       <div class="pill">${escapeHtml(cover.pillText)}</div>
       <div class="cover-hero"><img src="${escapeAttr(photoUrls.coverPhotoUrl)}" alt=""></div>

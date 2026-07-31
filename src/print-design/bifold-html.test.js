@@ -111,7 +111,11 @@ test('front cover and back cover keep the full brand row (with tagline)', () => 
 })
 
 test('bigWord with an embedded newline renders as <br>, single-line bigWord renders unchanged', () => {
-  const twoLine = { ...FIXTURE_CONTENT, cover: { ...FIXTURE_CONTENT.cover, bigWord: 'YOUR BRAND.\nDEPLOYED.' } }
+  // Uses backCover (plain shared bigWordHtml()) rather than cover here: cover's
+  // big-word now goes through the two-tone coverBigWordHtml() helper (see the
+  // dedicated "cover big-word alternates gold/green per line" test below), which
+  // still emits <br> between lines but wraps each line in a <span> too.
+  const twoLine = { ...FIXTURE_CONTENT, backCover: { ...FIXTURE_CONTENT.backCover, bigWord: 'YOUR BRAND.\nDEPLOYED.' } }
   const html = buildFrontHtml({ content: twoLine, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /YOUR BRAND\.<br>DEPLOYED\./)
 
@@ -154,6 +158,45 @@ test('cover panel has no tint layer (text no longer sits over the photo)', () =>
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   const coverPanelMarkup = html.split('<div class="panel panel-cover">').pop()
   assert.doesNotMatch(coverPanelMarkup, /class="tint"/)
+})
+
+test('cover big-word alternates gold/green per line', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /<span class="bw-gold">YOUR BRAND\.<\/span><br><span class="bw-green">DEPLOYED\.<\/span>/)
+})
+
+test('cover hero photo gets the same left/right inset as other content', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.doesNotMatch(html, /:not\(\.cover-hero\)/)
+})
+
+test('back-cover renders an eyebrow line when provided, nothing when empty/absent', () => {
+  const withEyebrow = { ...FIXTURE_CONTENT, backCover: { ...FIXTURE_CONTENT.backCover, eyebrow: 'Where should your brand' } }
+  const html = buildFrontHtml({ content: withEyebrow, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /class="back-eyebrow">Where should your brand</)
+
+  const withoutEyebrow = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.doesNotMatch(withoutEyebrow, /class="back-eyebrow"/)
+})
+
+// NOTE ON THIS TEST: the spec for this task called for a CSS `mask-image:
+// linear-gradient(...)` soft-fade on `.panel-back .photo`. That was tried first
+// and rendered as a hard binary cutoff (no visible gradient at all) in this
+// repo's Puppeteer/Chromium build whenever `mask-image` is combined with an
+// element that also has `background-image` — confirmed with an isolated
+// render: the identical gradient fades perfectly smoothly against a plain
+// `background: <color>` div, but hard-cuts against `background-image: url(...)`.
+// The working fix uses two `::before`/`::after` gradient strips painted on top
+// of the photo at its measured letterboxed edges instead of a mask — verified
+// with a real render using the production photo. This test asserts the actual
+// (working) mechanism rather than the originally-specified mask-image.
+test('back-cover photo uses contain (letterboxed depth) with soft gradient fade strips instead of a hard cover crop', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.panel-back \.photo\s*\{[^}]*background-size:\s*contain/)
+  assert.doesNotMatch(html, /background-position:\s*19% center/)
+  assert.match(html, /\.panel-back \.photo::before, \.panel-back \.photo::after \{[\s\S]*?\}/)
+  assert.match(html, /\.panel-back \.photo::before \{[^}]*linear-gradient\(to bottom, var\(--near-black\)/)
+  assert.match(html, /\.panel-back \.photo::after \{[^}]*linear-gradient\(to bottom, transparent 0%, var\(--near-black\)/)
 })
 
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }
