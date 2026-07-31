@@ -55,6 +55,8 @@ function bigWordHtml(text) {
 
 function buildFrontHtml({ content, palette, photoUrls }) {
   const { backCover, cover } = content
+  const eyebrowHtml = cover.eyebrow ? `<div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>` : ''
+  const leadHtml = cover.taglineLead ? `<div class="lead">${escapeHtml(cover.taglineLead)}</div>` : ''
   return `<!doctype html>
 <html>
 <head>
@@ -75,15 +77,18 @@ ${sharedHead(palette)}
   .qrbox { width: 77px; height: 77px; flex: 0 0 77px; background: var(--beige); border-radius: 6px; padding: 6px; box-shadow: 0 3px 14px rgba(0,0,0,0.4); }
   .qrbox img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .bfoot { font-size: 11px; color: rgba(230,213,181,0.75); line-height: 1.5; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }
-  .panel-cover .photo { background-image: url('${escapeAttr(photoUrls.coverPhotoUrl)}'); background-position: 52% center; }
-  .panel-cover .tint { background: linear-gradient(160deg, rgba(18,80,43,0.55) 0%, rgba(28,30,33,0.35) 45%, rgba(20,22,25,0.72) 100%); }
+  .panel-cover { background: var(--near-black); }
+  .panel-cover .content { padding: 0.22in 0; }
+  .panel-cover .content > *:not(.cover-hero) { padding-left: 0.22in; padding-right: 0.22in; }
   .eyebrow { margin-top: 12px; font-size: 14px; letter-spacing: 3px; font-weight: 700; color: var(--green); text-transform: uppercase; }
-  .panel-cover .big-word { font-size: 81px; }
+  .panel-cover .big-word { font-size: 58px; }
   .panel-cover .tagline { margin-top: 14px; }
   .panel-cover .tagline .lead { font-size: 23px; }
   .panel-cover .tagline .desc { font-size: 18px; max-width: 92%; }
-  .pill { margin-top: 20px; align-self: flex-start; background: rgba(230,213,181,0.92); color: var(--charcoal);
+  .pill { margin-top: 16px; align-self: flex-start; background: rgba(230,213,181,0.92); color: var(--charcoal);
     font-size: 13px; font-weight: 700; letter-spacing: 2px; padding: 10px 16px; border-radius: 30px; }
+  .cover-hero { margin-top: auto; width: 100%; line-height: 0; }
+  .cover-hero img { display: block; width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -107,15 +112,13 @@ ${sharedHead(palette)}
   </div>
 
   <div class="panel panel-cover">
-    <div class="photo"></div>
-    <div class="tint"></div>
-    <div class="grain"></div>
     <div class="content">
       ${brandRow(photoUrls.logoUrl)}
-      ${cover.eyebrow ? `<div class="eyebrow">${escapeHtml(cover.eyebrow)}</div>` : ''}
+      ${eyebrowHtml}
       <div class="big-word">${bigWordHtml(cover.bigWord)}</div>
-      <div class="tagline">${cover.taglineLead ? `<div class="lead">${escapeHtml(cover.taglineLead)}</div>` : ''}<div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
+      <div class="tagline">${leadHtml}<div class="desc">${escapeHtml(cover.taglineDesc)}</div></div>
       <div class="pill">${escapeHtml(cover.pillText)}</div>
+      <div class="cover-hero"><img src="${escapeAttr(photoUrls.coverPhotoUrl)}" alt=""></div>
     </div>
   </div>
 

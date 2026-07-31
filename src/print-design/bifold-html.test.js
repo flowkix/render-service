@@ -131,4 +131,17 @@ test('interior photos are not zoomed past their natural frame', () => {
   assert.doesNotMatch(html, /transform:\s*scale\(1\.15\)/)
 })
 
+test('cover panel docks the photo as a full-width <img>, not a cropped background', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const coverPanelHtml = html.split('panel-cover"').pop()
+  assert.match(coverPanelHtml, /<img src="https:\/\/example\.com\/cover\.jpg"/)
+  assert.doesNotMatch(coverPanelHtml, /panel-cover \.photo \{ background-image/)
+})
+
+test('cover panel has no tint layer (text no longer sits over the photo)', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const coverPanelMarkup = html.split('<div class="panel panel-cover">').pop()
+  assert.doesNotMatch(coverPanelMarkup, /class="tint"/)
+})
+
 module.exports = { FIXTURE_PALETTE, FIXTURE_PHOTOS, FIXTURE_CONTENT }
