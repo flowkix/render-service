@@ -9,19 +9,14 @@ function isLightBackground(hex) {
   return brightness >= 128
 }
 
-// palette: { green, gold, beige, backgroundHex } (BusinessCardV2Palette)
+// palette: { green, gold, beige, backgroundHex, accentHex } (BusinessCardV2Palette)
 function resolveTokens(palette) {
   const light = isLightBackground(palette.backgroundHex)
-  // Both hand-built CLI variants use palette.gold for every divider/rule/
-  // kicker/title accent. If the user picks gold itself as the background,
-  // those accents would render gold-on-gold — fall back to charcoal in that
-  // one case, for every one of them (not just the divider).
-  const goldAccentColor = palette.backgroundHex === palette.gold ? 'var(--charcoal)' : 'var(--gold)'
-  // Same collision, mirrored for the other hardcoded brand accent: the "g"
-  // spans in the front tag line and the back headline are hand-set to
-  // palette.green. If the user picks green itself as the background, those
-  // spans would render green-on-green — fall back to charcoal there too.
-  const greenAccentColor = palette.backgroundHex === palette.green ? 'var(--charcoal)' : 'var(--green)'
+  // The text-accent color (front tagline highlight, back headline highlight,
+  // divider, job title) is whatever the client picked in the Style tab's
+  // "Text accent color" swatch row — falls back to charcoal only if it
+  // happens to match the chosen background (would otherwise be invisible).
+  const accentColor = palette.backgroundHex === palette.accentHex ? 'var(--charcoal)' : palette.accentHex
 
   return {
     light,
@@ -34,9 +29,9 @@ function resolveTokens(palette) {
     badgeStroke: light ? '#fff' : '#363C43',
     hasLogoPlate: !light,
     hasPhotoWindow: !light,
-    dividerColor: goldAccentColor,
-    titleColor: goldAccentColor,
-    greenAccentColor,
+    dividerColor: accentColor,
+    titleColor: accentColor,
+    accentColor,
   }
 }
 
