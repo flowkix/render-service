@@ -8,60 +8,72 @@ const FIXTURE_PALETTE = { green: '#88AD59', gold: '#DAAB61', beige: '#E6D5B5' }
 const FIXTURE_PHOTOS = {
   backCoverPhotoUrl: 'https://example.com/back.jpg',
   coverPhotoUrl: 'https://example.com/cover.jpg',
-  interiorLeftPhotoUrl: 'https://example.com/left.jpg',
-  interiorRightPhotoUrl: 'https://example.com/right.jpg',
+  interiorSpreadPhotoUrl: 'https://example.com/spread.jpg',
   logoUrl: 'https://example.com/logo.png',
   qrUrl: 'https://example.com/qr.png',
 }
 
+// v4 content refresh (2026-08-01) — back cover and both interior panels moved
+// from short poster-style copy to long-form paragraphs + dense enumerated
+// lists (10-12 items). Field names changed to match: backCover dropped
+// eyebrow/taglineDesc/segs for intro/idealForList/ctaHeading; interiorLeft
+// dropped taglineLead/taglineDesc/intro/isList/isNotList/resultRows for
+// paragraphs/whyItMattersLines/whatYouGainList; interiorRight dropped
+// taglineLead/taglineDesc/layerRows for intro/builtToCreate/deployedForList.
 const FIXTURE_CONTENT = {
   backCover: {
-    bigWord: 'SHOW UP.\nNEXT.',
-    taglineDesc: 'Built for brands that want more than impressions.',
-    segs: [
-      { label: 'Marketing Agencies', pitch: 'A physical asset you plug into any pitch.' },
-      { label: 'Corporate & HR Teams', pitch: 'On-brand, on-site presence for launches and events.' },
-      { label: 'Event Organizers & Sponsors', pitch: 'A premium sponsor zone that closes bigger deals.' },
+    bigWord: 'WHERE SHOULD YOUR BRAND\nSHOW UP NEXT?',
+    intro: "Whether you're launching a product or engaging employees, SNACKET helps your brand become part of people's day.",
+    idealForList: [
+      'Marketing Teams', 'Corporate & HR', 'Property Developers', 'Sports & Entertainment',
+      'Healthcare Systems', 'Universities', 'Economic Development', 'Community Organizations',
+      'Marketing Agencies', 'Event Professionals',
     ],
-    ctaLine: 'Scan to explore deployment options or schedule a conversation.',
-    footerText: 'SNACKET®\nCharlotte, NC · snacketnow.com\nSNACKET Foods, LLC',
+    ctaHeading: 'Ready To Deploy Your Brand?',
+    ctaLine: 'Scan the QR code to explore deployment options or schedule a strategy conversation.',
+    footerText: 'SNACKET®\nCharlotte, North Carolina\nWhere Brands Show Up™',
   },
   cover: {
     eyebrow: '',
     bigWord: 'YOUR BRAND.\nDEPLOYED.',
     taglineLead: '',
-    taglineDesc: "Charlotte's fully electric mobile experiential media platform.",
+    taglineDesc: "Charlotte's first fully electric mobile experiential media platform.",
     pillText: 'VISIBILITY · ENGAGEMENT · PROOF',
   },
   interiorLeft: {
-    bigWord: 'SHOW UP.',
-    taglineLead: 'Where your audience',
-    taglineDesc: 'already is.',
-    intro: 'SNACKET is structured activation infrastructure.',
-    isList: ['A mobile brand activation platform', 'Scalable activation infrastructure', 'An EV-based physical media asset', 'On-demand deployment system'],
-    isNotList: ['A marketing agency', 'A food truck', 'A catering company', 'A generic pop-up vendor'],
-    resultRows: [
-      { label: 'VISIBILITY', desc: 'The EV becomes a high-impact mobile brand asset.', color: 'green' },
-      { label: 'ENGAGEMENT', desc: 'A defined activation area built for real interaction.', color: 'gold' },
-      { label: 'PROOF', desc: 'Digital capture through QR, leads, and reporting.', color: 'green' },
+    bigWord: 'YOUR AUDIENCE\nIS ALREADY OUT THERE.',
+    paragraphs: [
+      'Every day, people interact with places, not advertisements.',
+      "The question isn't whether your audience is there.",
+      "It's whether your brand is.",
+    ],
+    whyItMattersLines: [
+      'Digital builds awareness.',
+      'Physical builds connection.',
+      'The strongest brands combine both.',
+    ],
+    whatYouGainList: [
+      'More visibility', 'More engagement', 'More memorable experiences', 'More branded content', 'More measurable interaction',
     ],
   },
   interiorRight: {
-    bigWord: 'LAYERS.',
-    taglineLead: 'One platform.',
-    taglineDesc: 'Built in layers.',
-    layerRows: [
-      { label: 'Hardware Layer', desc: 'EV SNACKET (NitroCafe, FreshBlend, or MixoBar)' },
-      { label: 'Visibility Layer', desc: 'Brand Platform: full wrap, lift-up doors, interior panels' },
-      { label: 'Engagement Layer', desc: 'Activation Area: backdrop, photo/social zone' },
-      { label: 'Interaction Layer', desc: 'Brand Ambassador + EV Operator on-site' },
+    bigWord: 'ONE PLATFORM.\nENDLESS POSSIBILITIES.',
+    intro: 'SNACKET combines mobile media, immersive environments, and audience engagement into one deployable platform.',
+    builtToCreate: [
+      { label: 'Visibility', desc: 'A fully branded mobile presence that captures attention wherever it goes.' },
+      { label: 'Engagement', desc: 'Interactive spaces designed for conversation, networking, and participation.' },
+      { label: 'Proof', desc: 'QR engagement, lead capture, branded content, and post-deployment reporting.' },
+    ],
+    deployedForList: [
+      'Corporate Networking', 'Product Launches', 'Recruiting Events', 'Employee Appreciation',
+      'Sponsor Hospitality', 'Resident Engagement', 'Community Activations', 'University Campaigns',
+      'Healthcare Outreach', 'Sports & Entertainment', 'Mixed-Use Developments', 'Brand Tours',
     ],
     fleetCards: [
-      { name: 'NitroCafe', desc: 'Coffee & beverages, any time of day' },
-      { name: 'FreshBlend', desc: 'Smoothies & wellness blends' },
-      { name: 'MixoBar', desc: 'Mocktails, cocktails, premium bar' },
+      { name: 'NitroCafe', desc: 'Coffee-forward experiences for networking, recruiting, and employee engagement.' },
+      { name: 'FreshBlend', desc: 'Wellness-focused experiences for campuses and community events.' },
+      { name: 'MixoBar', desc: 'Premium hospitality experiences for sponsorships and evening activations.' },
     ],
-    addonsLine: 'Add-ons: branding & set design, digital lead capture, staffing, brand-aligned F&B.',
   },
 }
 
@@ -104,17 +116,13 @@ test('interior panels use a compact brand row (no repeated tagline)', () => {
   assert.equal(wmTagCount, 0, 'interior (buildBackHtml) panels should render zero wm-tag lines')
 })
 
-test('front cover and back cover keep the full brand row (with tagline)', () => {
+test('front cover keeps the full brand row (with tagline); back cover is now compact too (title-led redesign)', () => {
   const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   const wmTagCount = (front.match(/class="wm-tag"/g) || []).length
-  assert.equal(wmTagCount, 2, 'buildFrontHtml renders 2 panels (back cover + cover), both full lockup')
+  assert.equal(wmTagCount, 2, 'both panels in buildFrontHtml call brandRow with the default full variant')
 })
 
 test('bigWord with an embedded newline renders as <br>, single-line bigWord renders unchanged', () => {
-  // Uses backCover (plain shared bigWordHtml()) rather than cover here: cover's
-  // big-word now goes through the two-tone coverBigWordHtml() helper (see the
-  // dedicated "cover big-word alternates gold/green per line" test below), which
-  // still emits <br> between lines but wraps each line in a <span> too.
   const twoLine = { ...FIXTURE_CONTENT, backCover: { ...FIXTURE_CONTENT.backCover, bigWord: 'YOUR BRAND.\nDEPLOYED.' } }
   const html = buildFrontHtml({ content: twoLine, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /YOUR BRAND\.<br>DEPLOYED\./)
@@ -127,7 +135,6 @@ test('bigWord with an embedded newline renders as <br>, single-line bigWord rend
 
 test('cover renders no eyebrow/lead markup when those fields are empty', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  // FIXTURE_CONTENT.cover.eyebrow === '' and taglineLead === ''
   assert.doesNotMatch(html, /class="eyebrow"/)
   assert.doesNotMatch(html, /class="lead"/)
 })
@@ -142,16 +149,29 @@ test('cover still renders eyebrow/lead when those fields are non-empty', () => {
   assert.match(html, /class="lead">Your Brand\.</)
 })
 
-test('interior photos are not zoomed past their natural frame', () => {
-  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.doesNotMatch(html, /transform:\s*scale\(1\.15\)/)
+test('cover panel content is pushed down 2cm (1.0074in top padding) with the bottom unchanged at 0.22in', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.panel-cover \.content\s*\{[^}]*padding:\s*1\.0074in 0 0\.22in 0/)
 })
 
-test('cover panel docks the photo as a full-width <img>, not a cropped background', () => {
+test('cover-hero-tint opacity was reduced so the photo (buildings) reads through clearly', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const tintCss = html.match(/\.cover-hero-tint\s*\{[^}]*\}/)[0]
+  assert.match(tintCss, /rgba\(54, 60, 67, 0\.30\)/)
+  assert.doesNotMatch(tintCss, /0\.55/)
+})
+
+// Client feedback (2026-08-01): switched from a natural-aspect <img> to a
+// shorter fixed-aspect-ratio background-image (cover, biased toward the top
+// of the source photo) so less empty foreground pavement shows and more of
+// the buildings/skyline stay in frame.
+test('cover-hero crops the photo to a fixed aspect ratio via cover + top-biased position, not a natural-aspect <img>', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   const coverPanelHtml = html.split('panel-cover"').pop()
-  assert.match(coverPanelHtml, /<img src="https:\/\/example\.com\/cover\.jpg"/)
-  assert.doesNotMatch(coverPanelHtml, /panel-cover \.photo \{ background-image/)
+  assert.doesNotMatch(coverPanelHtml, /<img src="https:\/\/example\.com\/cover\.jpg"/)
+  assert.match(html, /\.cover-hero\s*\{[^}]*background-image:\s*url\('https:\/\/example\.com\/cover\.jpg'\)/)
+  assert.match(html, /\.cover-hero\s*\{[^}]*background-size:\s*cover/)
+  assert.match(html, /\.cover-hero\s*\{[^}]*aspect-ratio:\s*1\.72/)
 })
 
 test('cover panel has no tint layer (text no longer sits over the photo)', () => {
@@ -165,113 +185,138 @@ test('cover big-word alternates gold/green per line', () => {
   assert.match(html, /<span class="bw-gold">YOUR BRAND\.<\/span><br><span class="bw-green">DEPLOYED\.<\/span>/)
 })
 
-test('cover hero photo gets the same left/right inset as other content', () => {
+test('cover hero photo is full-bleed to the panel sides, not inset like other content', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.doesNotMatch(html, /:not\(\.cover-hero\)/)
+  assert.match(html, /:not\(\.cover-hero\)/)
 })
 
-test('back-cover renders an eyebrow line when provided, nothing when empty/absent', () => {
-  const withEyebrow = { ...FIXTURE_CONTENT, backCover: { ...FIXTURE_CONTENT.backCover, eyebrow: 'Where should your brand' } }
-  const html = buildFrontHtml({ content: withEyebrow, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.match(html, /class="back-eyebrow">Where should your brand</)
-
-  const withoutEyebrow = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.doesNotMatch(withoutEyebrow, /class="back-eyebrow"/)
+test('cover hero photo fades top and bottom via mask-image, not left/right', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const coverHeroCss = html.match(/\.cover-hero\s*\{[^}]*\}/)[0]
+  assert.match(coverHeroCss, /mask-image:\s*linear-gradient\(to bottom/)
 })
 
-// The back-cover photo is admin-uploadable per generation (HUB Photos tab).
-// background-position: center 1cm pins the TOP offset as a fixed length, which
-// is aspect-ratio-agnostic by construction (a CSS <length>, unlike a
-// <percentage>, offsets the image edge from the container edge regardless of
-// the image/container size difference) — the top mask-image stop is tuned
-// once and stays correct for any photo. The BOTTOM mask-image stop is NOT
-// aspect-ratio-agnostic: it's tuned to where the CURRENT photo's real bottom
-// edge lands (computed from its actual dimensions), so it will need
-// re-tuning if a future replacement photo has a meaningfully different aspect
-// ratio (same re-tuning pattern already used for the two interior panels —
-// see the git history on those). Directly verified against the real
-// production photo (back-novacare-gala.jpg) via renderHtmlStringToPng: the
-// image fades smoothly into the panel's charcoal background, no hard seam.
+test('back cover has no eyebrow (folded into the unified two-line bigWord instead)', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.doesNotMatch(html, /class="back-eyebrow"/)
+  assert.match(html, /WHERE SHOULD YOUR BRAND<br>SHOW UP NEXT\?/)
+})
+
 test('back-cover photo uses contain + a mask-image fade (top offset is aspect-ratio-agnostic, bottom is tuned to the current photo), not a hard cover crop', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   assert.match(html, /\.panel-back \.photo\s*\{[^}]*background-size:\s*contain/)
   assert.match(html, /\.panel-back \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
-  assert.doesNotMatch(html, /::before|::after/)
+  assert.doesNotMatch(html, /\.panel-back \.photo::before|\.panel-back \.photo::after/)
 })
 
-test('interior panels use contain + mask-image letterbox, not a hard cover crop', () => {
+test('back-cover gets an additional soft charcoal wash layer on top of the existing legibility tint', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /<div class="charcoal-wash"><\/div>/)
+  assert.match(html, /\.panel-back \.charcoal-wash\s*\{[^}]*background:\s*rgba\(54, 60, 67, 0\.28\)/)
+})
+
+test('back-cover CTA row (QR + right-aligned 2-line CTA text) is pinned to the bottom, independent of copy length; footer sits on one line below it with a 1cm bottom margin', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.cta-row\s*\{[^}]*margin-top:\s*auto/)
+  assert.match(html, /\.cta-line\s*\{[^}]*text-align:\s*right/)
+  assert.match(html, /\.panel-back \.content\s*\{[^}]*padding-bottom:\s*1cm/)
+  const backPanelHtml = html.split('<div class="panel panel-back">')[1].split('<div class="panel panel-cover">')[0]
+  assert.match(backPanelHtml, /class="bfoot-single"/)
+  assert.doesNotMatch(backPanelHtml, /class="bblock"/)
+})
+
+test('back-cover renders the 10-item "Ideal For" tag grid, not the old 3-seg label/pitch list', () => {
+  const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const backPanelHtml = html.split('<div class="panel panel-back">')[1].split('<div class="panel panel-cover">')[0]
+  const tagCount = (backPanelHtml.match(/class="tag-item"/g) || []).length
+  assert.equal(tagCount, 10)
+  assert.doesNotMatch(backPanelHtml, /class="seg"/)
+  assert.match(backPanelHtml, /Ideal For/)
+  assert.match(backPanelHtml, /Ready To Deploy Your Brand\?/)
+})
+
+test('interior-left and interior-right share ONE spread photo (same URL), not two independent photos', () => {
   const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.match(html, /\.panel-left \.photo\s*\{[^}]*background-size:\s*contain/)
-  assert.match(html, /\.panel-left \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
-  assert.match(html, /\.panel-right \.photo\s*\{[^}]*background-size:\s*contain/)
-  assert.match(html, /\.panel-right \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
+  const urlCount = (html.match(/url\('https:\/\/example\.com\/spread\.jpg'\)/g) || []).length
+  assert.equal(urlCount, 1, 'a single shared .panel-left .photo, .panel-right .photo rule should declare the background-image once')
+  assert.match(html, /\.panel-left \.photo, \.panel-right \.photo\s*\{[^}]*url\('https:\/\/example\.com\/spread\.jpg'\)/, 'both selectors should be combined into one rule, not two separate ones')
+  assert.doesNotMatch(html, /interiorLeftPhotoUrl|interiorRightPhotoUrl/)
 })
 
-// Client feedback (2026-07-31): push the letterboxed photo UP to a fixed ~1cm
-// top gap instead of centering it, so the leftover letterbox space lands at
-// the bottom instead of being split evenly. background-position: center 1cm
-// is a CSS length, not a percentage, so it offsets the image's top edge by
-// exactly 1cm regardless of the photo's aspect ratio (verified via
-// renderHtmlStringToPng + raw pixel sampling: the real photo edge lands right
-// at the predicted 4.6%-of-panel-height mark on all 3 panels).
-test('back-cover and interior photos are pushed to a fixed 1cm top margin instead of centered', () => {
+test('interior spread photo is split across both panels: same size/position-y, offset position-x one panel-width apart', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(html, /\.panel-left \.photo, \.panel-right \.photo\s*\{[^}]*background-size:\s*10\.98in 7\.8467in/)
+  assert.match(html, /\.panel-left \.photo, \.panel-right \.photo\s*\{[^}]*background-position-y:\s*0\.3266in/)
+  assert.match(html, /\.panel-left \.photo\s*\{\s*background-position-x:\s*0in/)
+  assert.match(html, /\.panel-right \.photo\s*\{\s*background-position-x:\s*-5\.49in/)
+  assert.match(html, /\.panel-left \.photo, \.panel-right \.photo\s*\{[^}]*mask-image:\s*linear-gradient/)
+})
+
+test('back-cover photo is pushed to a fixed 1cm top margin instead of centered', () => {
   const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   assert.match(front, /\.panel-back \.photo\s*\{[^}]*background-position:\s*center 1cm/)
-  assert.match(back, /\.panel-left \.photo\s*\{[^}]*background-position:\s*center 1cm/)
-  assert.match(back, /\.panel-right \.photo\s*\{[^}]*background-position:\s*center 1cm/)
   assert.doesNotMatch(front, /\.panel-back \.photo\s*\{[^}]*background-position:\s*center center/)
-  assert.doesNotMatch(back, /\.panel-left \.photo\s*\{[^}]*background-position:\s*center center/)
-  assert.doesNotMatch(back, /\.panel-right \.photo\s*\{[^}]*background-position:\s*center center/)
 })
 
-// The mask must reach exactly 0% opacity right at the photo's real raster
-// edge for the seam to actually dissolve rather than just soften before a
-// hard cutoff (see the derivation in buildFrontHtml's .panel-back .photo
-// comment). Top ramp is identical on all 3 panels since the 1cm top offset is
-// now fixed regardless of photo; bottom ramp differs per panel because the
-// bottom letterbox gap still depends on each photo's real aspect ratio.
-test('the fade ramps hold transparent through the fixed ~4.6% top edge, not fading in immediately', () => {
-  const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+test('interior spread photo is vertically centered (no client ask to push it up, unlike back-cover)', () => {
   const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  for (const [html, selector] of [[front, '\\.panel-back \\.photo'], [back, '\\.panel-left \\.photo'], [back, '\\.panel-right \\.photo']]) {
-    const re = new RegExp(selector + '\\s*\\{[^}]*mask-image:\\s*linear-gradient\\(to bottom, transparent 0%, transparent 4\\.6%, black 14%')
-    assert.match(html, re, `${selector} should hold transparent through the fixed 4.6% edge before ramping to opaque`)
-  }
+  assert.match(back, /\.panel-left \.photo, \.panel-right \.photo\s*\{[^}]*background-position-y:\s*0\.3266in/)
+  assert.doesNotMatch(back, /background-position:\s*center 1cm/)
+})
+
+test('back-cover fade ramp holds transparent through the fixed ~4.6% top edge, not fading in immediately', () => {
+  const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(front, /\.panel-back \.photo\s*\{[^}]*mask-image:\s*linear-gradient\(to bottom, transparent 0%, transparent 4\.6%, black 14%/)
+})
+
+test('interior spread fade ramp holds transparent through its own true edge (~3.8%, letterbox math differs from back-cover)', () => {
+  const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.match(back, /\.panel-left \.photo, \.panel-right \.photo\s*\{[^}]*mask-image:\s*linear-gradient\(to bottom, transparent 0%, transparent 3\.843%, black 13\.8%/)
 })
 
 test('back-cover bottom fade ramp is repositioned for the new, larger bottom letterbox gap', () => {
   const html = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.match(html, /\.panel-back \.photo\s*\{[^}]*black 31%, transparent 41%/)
+  assert.match(html, /\.panel-back \.photo\s*\{[^}]*black 29\.962%, transparent 39\.962%/)
 })
 
-test('interior panels bottom fade ramp is repositioned for the new, larger bottom letterbox gap', () => {
+test('interior spread bottom fade ramp mirrors the top ramp, symmetric around the centered letterbox', () => {
   const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.match(html, /\.panel-left \.photo\s*\{[^}]*black 60%, transparent 70%/)
-  assert.match(html, /\.panel-right \.photo\s*\{[^}]*black 60%, transparent 70%/)
+  assert.match(html, /\.panel-left \.photo, \.panel-right \.photo\s*\{[^}]*black 86\.2%, transparent 96\.157%/)
 })
 
-test('interior-right renders no taglineDesc markup when empty, renders it when present', () => {
-  const empty = { ...FIXTURE_CONTENT, interiorRight: { ...FIXTURE_CONTENT.interiorRight, taglineDesc: '' } }
-  const htmlEmpty = buildBackHtml({ content: empty, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  const rightPanelEmpty = htmlEmpty.split('panel-right"').pop()
-  assert.doesNotMatch(rightPanelEmpty, /class="desc"/)
-
-  const withDesc = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.match(withDesc, /class="desc">Built in layers\./)
-})
-
-test('interior-left .glass and interior-right .row are narrower than the old 78%/82% to show more photo', () => {
+test('interior-left renders all paragraphs, the "Why It Matters" lines, and the "What You Gain" list', () => {
   const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
-  assert.doesNotMatch(html, /\.glass\s*\{[^}]*width:\s*78%/)
-  assert.doesNotMatch(html, /\.row\s*\{[^}]*width:\s*82%/)
-  assert.match(html, /\.glass\s*\{[^}]*width:\s*\d{1,2}%/)
-  assert.match(html, /\.row\s*\{[^}]*width:\s*\d{1,2}%/)
+  const leftPanelHtml = html.split('<div class="panel panel-left">')[1].split('<div class="panel panel-right">')[0]
+  for (const p of FIXTURE_CONTENT.interiorLeft.paragraphs) assert.match(leftPanelHtml, new RegExp(`<p>${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/&/g, '&amp;')}</p>`))
+  assert.match(leftPanelHtml, /Why It Matters/)
+  const whyLineCount = (leftPanelHtml.match(/class="why-line"/g) || []).length
+  assert.equal(whyLineCount, 3)
+  assert.match(leftPanelHtml, /What You Gain/)
+  const gainCount = (leftPanelHtml.match(/<li>/g) || []).length
+  assert.equal(gainCount, 5)
+  assert.doesNotMatch(leftPanelHtml, /SNACKET IS NOT|class="isnot"/)
 })
 
-// Client feedback (2026-07-31): the sheet/cover background should be the
-// brand charcoal (#363C43), not near-black — applies to both faces, since
-// .sheet's background is shared by buildFrontHtml and buildBackHtml.
+test('interior-right renders "Built To Create" rows, the 12-item "Deployed For" tag grid, and fleet cards', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  const rightPanelHtml = html.split('<div class="panel panel-right">').pop()
+  assert.match(rightPanelHtml, /Built To Create/)
+  const rowCount = (rightPanelHtml.match(/class="row"/g) || []).length
+  assert.equal(rowCount, 3, 'builtToCreate has 3 items (Visibility/Engagement/Proof), not the old 4 layerRows')
+  assert.match(rightPanelHtml, /Deployed For/)
+  const tagCount = (rightPanelHtml.match(/class="tag-item"/g) || []).length
+  assert.equal(tagCount, 12)
+  assert.match(rightPanelHtml, /Configured To Match Your Experience/)
+  const fleetCount = (rightPanelHtml.match(/class="fleet-card"/g) || []).length
+  assert.equal(fleetCount, 3)
+})
+
+test('interior-left .glass and interior-right .row do not use the old fixed 60%/62% width', () => {
+  const html = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
+  assert.doesNotMatch(html, /\.glass\s*\{[^}]*width:\s*60%/)
+  assert.doesNotMatch(html, /\.row\s*\{[^}]*width:\s*62%/)
+})
+
 test('the sheet and cover panel use the charcoal background, not near-black', () => {
   const front = buildFrontHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
   const back = buildBackHtml({ content: FIXTURE_CONTENT, palette: FIXTURE_PALETTE, photoUrls: FIXTURE_PHOTOS })
