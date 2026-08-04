@@ -133,9 +133,23 @@ async function loadLogo(width) {
 
 // Generate a styled slide from a source image file path.
 // Returns path to temp PNG (lossless — avoids JPEG-on-JPEG artifact compounding).
+//
+// THIS is the actual code path that renders image-based reel scenes (render.js's
+// `generateSlide(srcPath, scene.text)`, used whenever a reel's clip is a static
+// image rather than raw video) -- the earlier maxLines=2 default left unchanged
+// on this call site is what caused a live SNACKET reel's hook to still show
+// truncated ("...impressions and…") even after the ffmpeg-utils.js/render-actions.ts
+// fix landed, because THIS function's overlay (buildOverlaySvg, Sharp+SVG PNG
+// compositing) is a completely separate render path from FFmpeg's drawtext and
+// was never touched. TEXT_Y_BOTTOM=1680 bottom-anchors the text block and grows
+// upward as lines increase (see buildOverlaySvg's startY calc) — going from 2
+// to 3 lines moves the topmost line up by exactly one LINE_HEIGHT (~58px) out
+// of a 1920px frame, nowhere near the top gradient rect at H*0.4=768 or Y=0 —
+// no collision risk, so maxLines=2 here was never a real layout constraint,
+// just an oversight in scope from the original wrapText fix.
 async function generateSlide(srcImagePath, text) {
   const outputPath = path.join(os.tmpdir(), `slide_${randomUUID()}.png`)
-  const lines = wrapText(text, 36, 2)
+  const lines = wrapText(text, 36, 3)
 
   const [bgBuf, fgBuf] = await Promise.all([
     // Layer 1: blurred COVER background — .rotate() auto-orients by EXIF
