@@ -142,10 +142,11 @@ async function loadLogo(width) {
 // fix landed, because THIS function's overlay (buildOverlaySvg, Sharp+SVG PNG
 // compositing) is a completely separate render path from FFmpeg's drawtext and
 // was never touched. TEXT_Y_BOTTOM=1680 bottom-anchors the text block and grows
-// upward as lines increase (same math already verified safe for ffmpeg-utils.js:
-// 3 lines only pushes the top edge up by ~175px out of a 1920px frame — no
-// collision risk), so maxLines=2 here was never a real layout constraint, just
-// an oversight in scope from the original wrapText fix.
+// upward as lines increase (see buildOverlaySvg's startY calc) — going from 2
+// to 3 lines moves the topmost line up by exactly one LINE_HEIGHT (~58px) out
+// of a 1920px frame, nowhere near the top gradient rect at H*0.4=768 or Y=0 —
+// no collision risk, so maxLines=2 here was never a real layout constraint,
+// just an oversight in scope from the original wrapText fix.
 async function generateSlide(srcImagePath, text) {
   const outputPath = path.join(os.tmpdir(), `slide_${randomUUID()}.png`)
   const lines = wrapText(text, 36, 3)
