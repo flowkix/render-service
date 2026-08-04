@@ -21,6 +21,7 @@ const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
 const { checkSimpleSceneRateLimit } = require('./src/ev-engine/scene-simple-rate-limiter')
 const { checkBrandingRateLimit } = require('./src/ev-engine/branding-rate-limiter')
 const { checkGuideRateLimit } = require('./src/ev-engine/guide-rate-limiter')
+const { checkBalloonRateLimit } = require('./src/ev-engine/balloon-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
@@ -296,6 +297,131 @@ app.options('/clt-alliance/send-code', (req, res) => {
 app.options('/clt-alliance/request-guide', (req, res) => {
   applyCltAllianceCors(req, res)
   res.sendStatus(204)
+})
+
+app.options('/balloons/request-addon', (req, res) => {
+  applyCltAllianceCors(req, res)
+  res.sendStatus(204)
+})
+
+// snacketnow.com/balloons — public balloon décor add-on request intake.
+// Validates the code against a real, active catalog_items row (never trusts
+// the client-supplied name), inserts into catalog_addon_requests, then
+// notifies sales@snacketfoods.net via n8n. Mirrors /clt-alliance/request-guide's
+// shape (honeypot + rate limit + best-effort DB insert + awaited email send).
+app.post('/balloons/request-addon', async (req, res) => {
+  applyCltAllianceCors(req, res)
+  const { catalog_sku, name, email, quantity, honeypot } = req.body
+
+  if (honeypot && String(honeypot).trim() !== '') {
+    return res.json({ ok: true })
+  }
+  if (!catalog_sku || !name || !email || !quantity) {
+    return res.status(400).json({ ok: false, error: 'catalog_sku, name, email and quantity are required' })
+  }
+  if (typeof name !== 'string' || typeof email !== 'string' || typeof catalog_sku !== 'string') {
+    return res.status(400).json({ ok: false, error: 'name, email and catalog_sku must be text' })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ ok: false, error: 'invalid email' })
+  }
+  if (name.length > 200) {
+    return res.status(400).json({ ok: false, error: 'name must be 200 characters or fewer' })
+  }
+  if (email.length > 320) {
+    return res.status(400).json({ ok: false, error: 'email must be 320 characters or fewer' })
+  }
+  const qty = Number(quantity)
+  if (!Number.isInteger(qty) || qty < 1 || qty > 999) {
+    return res.status(400).json({ ok: false, error: 'quantity must be a whole number between 1 and 999' })
+  }
+
+  const clientIp = req.ip || 'unknown'
+  try {
+    checkBalloonRateLimit({ ip: clientIp, email })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  let snacketOs
+  try {
+    snacketOs = getSnacketOsClient()
+  } catch (err) {
+    console.error('[balloon-addon] snacket-os client init FAILED:', err.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  // Look up the real catalog row server-side — never trust a client-supplied
+  // name/price for what gets written to the catalog request record.
+  const { data: catalogItem, error: catalogError } = await snacketOs
+    .from('catalog_items')
+    .select('id, name, sku')
+    .eq('sku', catalog_sku)
+    .eq('category', 'addon_decor')
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (catalogError) {
+    console.error('[balloon-addon] catalog lookup FAILED:', catalogError.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!catalogItem) {
+    return res.status(400).json({ ok: false, error: 'unknown or inactive design code' })
+  }
+
+  let requestId = null
+  try {
+    const { data: newRequest, error: insertError } = await snacketOs
+      .from('catalog_addon_requests')
+      .insert({
+        catalog_item_id: catalogItem.id,
+        prospect_name: name,
+        prospect_email: email,
+        quantity: qty,
+        source: 'balloon_menu_public',
+      })
+      .select('id')
+      .single()
+    if (insertError) {
+      console.error('[balloon-addon] request insert FAILED:', insertError.message)
+    } else {
+      requestId = newRequest.id
+    }
+  } catch (err) {
+    console.error('[balloon-addon] request insert threw:', err.message)
+  }
+
+  // Awaited — the user is actively waiting to hear their request went through.
+  try {
+    await axios.post('https://flowait.app.n8n.cloud/webhook/snacket-balloon-addon-notify', {
+      name, email, quantity: qty,
+      catalog_sku: catalogItem.sku,
+      catalog_item_name: catalogItem.name,
+      request_id: requestId,
+    }, { timeout: 15000 })
+  } catch (err) {
+    console.error('[balloon-addon] notify send FAILED:', err.message)
+
+    // Same fire-and-forget failure-alert pattern as the CLT Alliance flows —
+    // a public prospect has no reason to ever tell us this failed.
+    axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-failure-alert', {
+      name, email, error_message: `[balloon-addon] ${err.message}`.slice(0, 2000), lead_id: requestId,
+      occurred_at: new Date().toISOString(),
+    }, { timeout: 10000 }).catch(alertErr => {
+      console.error('[balloon-addon] failure alert FAILED:', alertErr.message)
+    })
+
+    if (!requestId) {
+      // Neither the DB record nor the notification landed — this is a real
+      // failure the user should see and retry, not a false-positive success.
+      return res.status(500).json({ ok: false, error: 'Could not send your request — please try again.' })
+    }
+    // The request IS recorded in catalog_addon_requests even though the email
+    // notification failed — staff can still find it there, so tell the user
+    // it succeeded rather than prompting a confusing duplicate submission.
+  }
+
+  res.json({ ok: true })
 })
 
 // Static, pre-generated asset (see scripts/generate-clt-alliance-guide.js) — this route
