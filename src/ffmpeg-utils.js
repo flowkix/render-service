@@ -14,17 +14,33 @@ const BASE_SCALE = 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=108
 // White bold text, black outline, bottom-center — mirrors slide-gen overlay style
 const DRAWTEXT_STYLE = 'fontsize=46:fontcolor=white:borderw=4:bordercolor=black@0.75:x=(w-text_w)/2:y=h*0.85-text_h:line_spacing=10'
 
-// Word-wrap text at maxCharsPerLine (preserves existing \n), max 2 lines — 36×2=72 chars available
-function wrapText(text, maxCharsPerLine = 36, maxLines = 2) {
+// Word-wrap text at maxCharsPerLine (preserves existing \n), max 3 lines — 36×3=108 chars
+// available. Mirrors hub's render-actions.ts wrapText — the HUB side already wraps
+// scene text before sending it here, so a mismatched maxLines between the two silently
+// double-truncates (HUB wraps to N lines, this then re-wraps that already-short text
+// to a DIFFERENT, smaller limit, dropping more of it on top). If text still overflows
+// maxLines even at 3, the last line gets a trailing "…" instead of silently dropping
+// the remaining words with no indication — confirmed live on a published SNACKET reel:
+// the hook cut off after "...impressions and" with "starts earning attention." gone
+// and no ellipsis, reading as a rendering bug rather than a design choice.
+function wrapText(text, maxCharsPerLine = 36, maxLines = 3) {
   const segments = text.split('\n')
   const lines = []
+  let truncated = false
   for (const segment of segments) {
-    if (lines.length >= maxLines) break
+    if (lines.length >= maxLines) { if (segment.trim()) truncated = true; break }
     const words = segment.split(/\s+/).filter(Boolean)
     let current = ''
     for (const word of words) {
-      if (lines.length >= maxLines) break
-      if (current.length === 0) {
+      if (lines.length >= maxLines) { truncated = true; break }
+      // A single word longer than the whole line width can't just become the
+      // line as-is — it would render wider than the frame and get visually
+      // clipped by FFmpeg. Slice it to fit, same as the other branch below.
+      if (word.length > maxCharsPerLine) {
+        if (current) lines.push(current)
+        current = word.slice(0, maxCharsPerLine)
+        truncated = true
+      } else if (current.length === 0) {
         current = word
       } else if (current.length + 1 + word.length <= maxCharsPerLine) {
         current += ' ' + word
@@ -33,9 +49,17 @@ function wrapText(text, maxCharsPerLine = 36, maxLines = 2) {
         current = word
       }
     }
-    if (current && lines.length < maxLines) lines.push(current)
+    if (current) {
+      if (lines.length < maxLines) lines.push(current)
+      else truncated = true
+    }
   }
-  return lines.slice(0, maxLines).join('\n')
+  const result = lines.slice(0, maxLines)
+  if (truncated && result.length > 0) {
+    const last = result[result.length - 1]
+    result[result.length - 1] = last.length + 1 <= maxCharsPerLine ? `${last}…` : `${last.slice(0, maxCharsPerLine - 1)}…`
+  }
+  return result.join('\n')
 }
 
 // Write word-wrapped text to a temp file so FFmpeg drawtext doesn't need shell quoting/escaping
@@ -232,4 +256,4 @@ function encodeVideo(slides, audioPath = null) {
   })
 }
 
-module.exports = { encodeVideo }
+module.exports = { encodeVideo, wrapText }

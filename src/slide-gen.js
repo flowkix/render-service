@@ -40,28 +40,41 @@ const CHARCOAL = '#1A1A1A'
 const GOLD = '#C9A227'
 
 // Word-wrap: split at \n first, then wrap long lines at maxChars.
-// Returns max maxLines lines total.
+// Returns max maxLines lines total. Line count/width unchanged (callers size the
+// canvas layout around exactly maxLines) — but text that still overflows now gets
+// a trailing "…" on the last line instead of silently vanishing with no indication.
+// See the identical fix + rationale in ffmpeg-utils.js's wrapText (same bug class,
+// confirmed live on a published SNACKET reel via the sibling function).
 function wrapText(text, maxChars = 36, maxLines = 2) {
   if (!text) return []
   const lines = []
+  let truncated = false
   for (const seg of text.split('\n')) {
-    if (lines.length >= maxLines) break
+    if (lines.length >= maxLines) { if (seg.trim()) truncated = true; break }
     if (seg.length <= maxChars) {
       lines.push(seg)
     } else {
       let current = ''
       for (const word of seg.split(' ')) {
-        if (lines.length >= maxLines) break
+        if (lines.length >= maxLines) { truncated = true; break }
         const candidate = current ? `${current} ${word}` : word
         if (candidate.length <= maxChars) {
           current = candidate
         } else {
           if (current) lines.push(current)
+          if (word.length > maxChars) truncated = true
           current = word.slice(0, maxChars)
         }
       }
-      if (current && lines.length < maxLines) lines.push(current)
+      if (current) {
+        if (lines.length < maxLines) lines.push(current)
+        else truncated = true
+      }
     }
+  }
+  if (truncated && lines.length > 0) {
+    const last = lines[lines.length - 1]
+    lines[lines.length - 1] = last.length + 1 <= maxChars ? `${last}…` : `${last.slice(0, maxChars - 1)}…`
   }
   return lines
 }
