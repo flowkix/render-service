@@ -208,4 +208,45 @@ function buildSimpleScenePrompt({
   return { prompt: `${body}\n${notes}`.trim(), aspectRatio }
 }
 
-module.exports = { buildBrandingPrompt, buildScenePrompt, buildSimpleScenePrompt, activeCorrections }
+const DECOR_REFERENCE_DEFAULTS = {
+  aspect_ratio: '4:3',
+}
+
+/**
+ * Single-stage prompt — "Object with Reference Décor Generator". No branding/logo-swap
+ * pass: IMAGE A is already a real, finished object reference photo (e.g. a cataloged
+ * SNACKET Product Reference photo), IMAGE B is a décor/design reference photo. Unlike
+ * buildScenePrompt/buildSimpleScenePrompt, there is no companyName/theme/venue — only
+ * a free-text placementInstructions (required) and an optional scaleInstruction.
+ */
+function buildDecorReferencePrompt({
+  objectLabel,
+  placementInstructions,
+  scaleInstruction,
+  params = {},
+  decorPresetsConfig,
+  decorCorrectionsConfig,
+}) {
+  if (!objectLabel || !String(objectLabel).trim()) throw new Error('objectLabel is required')
+  if (!placementInstructions || !String(placementInstructions).trim()) throw new Error('placementInstructions is required')
+
+  const merged = { ...DECOR_REFERENCE_DEFAULTS, ...params }
+
+  const vars = {
+    objectLabel: String(objectLabel).trim(),
+    GLOBAL_RULES: decorPresetsConfig.global_rules_text,
+    placementInstructions: String(placementInstructions).trim(),
+    scale_block: scaleInstruction && String(scaleInstruction).trim()
+      ? `SCALE — IMPORTANT: ${String(scaleInstruction).trim()}.`
+      : '',
+    notes_block: merged.notes ? `NOTES: ${merged.notes}` : '',
+  }
+
+  const body = interpolate(decorPresetsConfig.template, vars)
+  const notes = correctionNotesBlock(activeCorrections(decorCorrectionsConfig, 'decor'))
+  const aspectRatio = merged.aspect_ratio_override || merged.aspect_ratio
+
+  return { prompt: `${body}\n${notes}`.trim(), aspectRatio }
+}
+
+module.exports = { buildBrandingPrompt, buildScenePrompt, buildSimpleScenePrompt, buildDecorReferencePrompt, activeCorrections }
