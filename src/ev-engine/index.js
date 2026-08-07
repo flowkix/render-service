@@ -5,6 +5,7 @@ const { loadZonesConfig, resolveZonesFileName } = require('./zones')
 const { runBrandingStage } = require('./pipeline/branding-stage')
 const { runSceneStage } = require('./pipeline/scene-stage')
 const { runSimpleSceneStage } = require('./pipeline/simple-scene-stage')
+const { runDecorReferenceStage } = require('./pipeline/decor-reference-stage')
 const { BrandedEvCache } = require('./pipeline/cache')
 
 // `vehicle` is optional — every pre-existing caller omits it and keeps getting the
@@ -17,7 +18,13 @@ function loadEngineConfig(vehicle) {
   const correctionsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.correctionsVersion), 'utf8'))
   const simplePresetsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.simplePromptsVersion), 'utf8'))
   const simpleCorrectionsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.simpleCorrectionsVersion), 'utf8'))
-  return { engineConfig, zonesConfig, presetsConfig, correctionsConfig, simplePresetsConfig, simpleCorrectionsConfig }
+  const decorPresetsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.decorPromptsVersion), 'utf8'))
+  const decorCorrectionsConfig = JSON.parse(fs.readFileSync(path.join(cfgDir, engineConfig.decorCorrectionsVersion), 'utf8'))
+  return {
+    engineConfig, zonesConfig, presetsConfig, correctionsConfig,
+    simplePresetsConfig, simpleCorrectionsConfig,
+    decorPresetsConfig, decorCorrectionsConfig,
+  }
 }
 
 /**
@@ -39,6 +46,10 @@ async function runScene(opts, configs = loadEngineConfig()) {
 
 async function runSimpleScene(opts, configs = loadEngineConfig()) {
   return runSimpleSceneStage({ ...opts, ...configs })
+}
+
+async function runDecorReference(opts, configs = loadEngineConfig()) {
+  return runDecorReferenceStage({ ...opts, ...configs })
 }
 
 async function runFull(
@@ -75,4 +86,4 @@ async function runSimpleFull(
   return { branding, scene }
 }
 
-module.exports = { loadEngineConfig, runBranding, runScene, runSimpleScene, runFull, runSimpleFull, BrandedEvCache }
+module.exports = { loadEngineConfig, runBranding, runScene, runSimpleScene, runDecorReference, runFull, runSimpleFull, BrandedEvCache }

@@ -8,6 +8,8 @@
   "correctionsVersion": "prompts/corrections.v1.json",
   "simplePromptsVersion": "prompts/presets-simple.v1.json",
   "simpleCorrectionsVersion": "prompts/corrections-simple.v1.json",
+  "decorPromptsVersion": "prompts/presets-decor.v1.json",
+  "decorCorrectionsVersion": "prompts/corrections-decor.v1.json",
   "stages": {
     "branding": {
       "provider": "gemini",
@@ -27,6 +29,12 @@
       "challengers": [
         { "provider": "gemini", "model": "gemini-3.1-flash-image" }
       ]
+    },
+    "decorReference": {
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-image",
+      "resolution": "2K",
+      "aspectRatio": "4:3"
     }
   },
   "scorer": {
