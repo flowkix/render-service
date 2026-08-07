@@ -1,0 +1,27 @@
+{
+  "version": "v1",
+  "description": "Curated corrections for the 'Object with Reference Décor Generator' capability. Independently maintained — no shared scope with corrections.v1.json (brand-activation infra) or corrections-simple.v1.json (staff/venue rules), neither of which apply here.",
+  "corrections": [
+    {
+      "id": "object-identity-final",
+      "appliesTo": "decor",
+      "active": true,
+      "failureMode": "The object's own branding, wrap, or surface text is repainted, color-graded, or corrupted while compositing the decor element",
+      "note": "The object shown in IMAGE A is FINAL. Do not repaint, recolor, or alter any part of it, including all printed text, logos, and small badges. Reproduce the object pixel-faithful, exactly as it appears in IMAGE A."
+    },
+    {
+      "id": "decor-fidelity",
+      "appliesTo": "decor",
+      "active": true,
+      "failureMode": "The decor element's structure, color, or material drifts from IMAGE B (e.g. wrong balloon colors, simplified structure)",
+      "note": "The decor element's exact structure, exact colors, and exact materials must match IMAGE B faithfully — do not redesign, simplify, or recolor it to better match the object or the background."
+    },
+    {
+      "id": "no-watermarks",
+      "appliesTo": "both",
+      "active": true,
+      "failureMode": "Output contains text overlays, borders or watermarks",
+      "note": "No text overlays, no borders, no watermarks, no captions anywhere in the output image."
+    }
+  ]
+}
