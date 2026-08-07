@@ -15,11 +15,12 @@ const { generateEvScene } = require('./src/ev-scene')
 const { generateDeckPdf } = require('./src/deck-pdf')
 const { generateCarouselSlide, generateOverlaySlide } = require('./src/slide-gen')
 const { uploadImage } = require('./src/supabase')
-const { runBranding, runFull, runSimpleFull } = require('./src/ev-engine')
+const { runBranding, runFull, runSimpleFull, runDecorReference } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
 const { checkSimpleSceneRateLimit } = require('./src/ev-engine/scene-simple-rate-limiter')
 const { checkBrandingRateLimit } = require('./src/ev-engine/branding-rate-limiter')
+const { checkDecorReferenceRateLimit } = require('./src/ev-engine/decor-reference-rate-limiter')
 const { checkGuideRateLimit } = require('./src/ev-engine/guide-rate-limiter')
 const { checkBalloonRateLimit } = require('./src/ev-engine/balloon-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
@@ -998,6 +999,83 @@ app.post('/generate-ev-branding', async (req, res) => {
     res.json({ ok: true, image_url: imageUrl })
   } catch (err) {
     console.error(`[branding] FAILED — ${source}:`, err.message)
+    res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
+  } finally {
+    try { fs.unlinkSync(tmpPath) } catch (_) {}
+  }
+})
+
+// Standalone route for the "Object with Reference Décor Generator" capability —
+// composites a décor/design reference photo onto a real, already-finished object
+// reference photo (e.g. a cataloged SNACKET Product Reference photo), guided by
+// free-text placement instructions. No branding/logo-swap pass — unlike capabilities
+// #1-#3, object_source is already a finished photo, not a white-background template.
+// Own rate limiter, own prompt/corrections config (see decor-reference-rate-limiter.js,
+// presets-decor.v1.json, corrections-decor.v1.json) — same isolation pattern as the
+// other 3 capabilities.
+app.post('/generate-ev-decor-reference', async (req, res) => {
+  const secret = req.headers['x-render-secret']
+  if (!process.env.RENDER_SECRET) {
+    console.error('[decor-reference] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!safeCompare(secret, process.env.RENDER_SECRET)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
+  const { source, object_source, decor_source, object_label, placement_instructions, scale_instruction } = req.body
+  if (!source || !object_source || !decor_source || !object_label || !placement_instructions) {
+    return res.status(400).json({
+      ok: false,
+      error: 'source, object_source, decor_source, object_label, and placement_instructions are required',
+    })
+  }
+
+  try {
+    checkDecorReferenceRateLimit({ source })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  const tmpPath = path.join(os.tmpdir(), `decor-reference_${randomUUID()}.png`)
+  try {
+    console.log(`[decor-reference] start — ${source} / ${object_label}`)
+
+    // Resolve both reference images ourselves — same SSRF-safe pattern as every other
+    // route in this file. NEVER pass these raw strings into the pipeline stage, which
+    // requires already-resolved Buffers (see decor-reference-stage.js's comment on the
+    // arbitrary-file-read bug this pattern was introduced to prevent).
+    async function resolveImageSource(value, fieldName) {
+      if (/^data:/.test(value)) {
+        const base64 = value.split(',')[1]
+        if (!base64) throw new Error(`malformed data URL for ${fieldName}`)
+        return Buffer.from(base64, 'base64')
+      }
+      if (/^https?:\/\//i.test(value)) {
+        return fetchPublicUrlBuffer(value)
+      }
+      throw new Error(`${fieldName} must be a data: URL or an http(s) URL`)
+    }
+
+    const objectBuffer = await resolveImageSource(object_source, 'object_source')
+    const decorBuffer = await resolveImageSource(decor_source, 'decor_source')
+
+    const { buffer } = await runDecorReference({
+      objectBuffer,
+      objectSourceHint: String(object_source),
+      decorBuffer,
+      decorSourceHint: String(decor_source),
+      objectLabel: object_label,
+      placementInstructions: placement_instructions,
+      scaleInstruction: scale_instruction,
+    })
+    fs.writeFileSync(tmpPath, buffer)
+    const storagePath = `decor-reference/${source}/${randomUUID()}.png`
+    const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
+    console.log(`[decor-reference] done — ${source} / ${imageUrl}`)
+    res.json({ ok: true, image_url: imageUrl })
+  } catch (err) {
+    console.error(`[decor-reference] FAILED — ${source}:`, err.message)
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
     try { fs.unlinkSync(tmpPath) } catch (_) {}
