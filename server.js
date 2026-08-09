@@ -238,7 +238,14 @@ async function fetchPublicUrlBuffer(urlString, redirectsLeft = 5) {
     timeout: 15000,
     maxContentLength: MAX_LOGO_FETCH_BYTES,
     maxRedirects: 0,
-    validateStatus: s => (s >= 200 && s < 300) || (s >= 300 && s < 400),
+    // Accept any status here and sort it out below — some favicon/logo fallback
+    // services (confirmed: Google's s2/favicons -> gstatic faviconV2) return a real
+    // generic-icon image body on a 404 status. Browsers render <img> bytes
+    // regardless of status code, so the pitch-elevator wizard's auto-detected logo
+    // cascade can show a candidate as "loaded" client-side that this fetch would
+    // then reject purely on status code, even though the body is a perfectly valid
+    // image (confirmed live: Content-Type: image/png, real PNG bytes, on a 404).
+    validateStatus: () => true,
   })
 
   if (resp.status >= 200 && resp.status < 300) {
@@ -260,6 +267,13 @@ async function fetchPublicUrlBuffer(urlString, redirectsLeft = 5) {
       throw new Error('logo_source redirected to an invalid URL')
     }
     return fetchPublicUrlBuffer(nextUrl, redirectsLeft - 1)
+  }
+
+  // Non-2xx/3xx status, but treat it as success if the body is actually a real
+  // image — matches what a browser's <img> tag already accepted client-side.
+  const contentType = String(resp.headers['content-type'] || '')
+  if (contentType.startsWith('image/') && resp.data && resp.data.length > 0) {
+    return Buffer.from(resp.data)
   }
 
   throw new Error(`logo_source fetch failed with status ${resp.status}`)
