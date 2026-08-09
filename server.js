@@ -849,6 +849,19 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
       throw new Error('logo_source must be a data: URL or an http(s) URL')
     }
 
+    // Branding-stage model override, scoped to source==='pitch-elevator' only. The
+    // engine default (engine.config.json stages.branding.model = gemini-3-pro-image)
+    // has a documented ~44% complete-brand-substitution defect rate (bench matrix.js
+    // BRANDING_CANDIDATES investigation, 2026-08). The pitch-elevator live/personalized
+    // path never had this mitigated — reps hit the hallucinated-EV bug in the field.
+    // gemini-3.1-flash-image is the established lower-defect-rate alternative (already
+    // used as a one-off override for the 7 generic gallery images last week). This does
+    // NOT touch prompt-builder.js, zones.v1.json, or the shared engine.config.json
+    // default — every other caller of this route (or of runFull() generally) keeps the
+    // untouched default model.
+    const brandingOverride =
+      source === 'pitch-elevator' ? { provider: 'gemini', model: 'gemini-3.1-flash-image' } : undefined
+
     const { scene } = await runFull({
       companyName: company_name,
       logoSource: logoBuffer,
@@ -856,6 +869,7 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
       venue,
       tableCount: table_count,
       ledPosterContent: led_poster_content,
+      brandingOverride,
     })
     fs.writeFileSync(tmpPath, scene.buffer)
     const storagePath = `scene-v2/${source}/${randomUUID()}.png`
