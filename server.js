@@ -23,6 +23,7 @@ const { checkBrandingRateLimit } = require('./src/ev-engine/branding-rate-limite
 const { checkDecorReferenceRateLimit } = require('./src/ev-engine/decor-reference-rate-limiter')
 const { checkGuideRateLimit } = require('./src/ev-engine/guide-rate-limiter')
 const { checkBalloonRateLimit } = require('./src/ev-engine/balloon-rate-limiter')
+const { checkPulseRateLimit } = require('./src/ev-engine/pulse-rate-limiter')
 const { uploadCltAlliancePreview, getSnacketOsClient } = require('./src/ev-engine/clt-alliance-upload')
 const { checkResendLimit, storeCode, verifyCode } = require('./src/ev-engine/clt-alliance-verification')
 const { MAX_INLINE_PAYLOAD_BYTES } = require('./src/ev-engine/assets')
@@ -319,6 +320,11 @@ app.options('/balloons/request-addon', (req, res) => {
   res.sendStatus(204)
 })
 
+app.options('/pulse/submit', (req, res) => {
+  applyCltAllianceCors(req, res)
+  res.sendStatus(204)
+})
+
 // snacketnow.com/balloons — public balloon décor add-on request intake.
 // Validates the code against a real, active catalog_items row (never trusts
 // the client-supplied name), inserts into catalog_addon_requests, then
@@ -434,6 +440,155 @@ app.post('/balloons/request-addon', async (req, res) => {
     // The request IS recorded in catalog_addon_requests even though the email
     // notification failed — staff can still find it there, so tell the user
     // it succeeded rather than prompting a confusing duplicate submission.
+  }
+
+  res.json({ ok: true })
+})
+
+const PULSE_BRAND_LIFT_VALUES = new Set([
+  'definitely_more_likely', 'somewhat_more_likely', 'about_the_same', 'less_likely',
+])
+const PULSE_IMPACT_CHOICE_VALUES = new Set([
+  'wells_fargo_team', 'career_opportunities', 'coffee_refreshments', 'mobile_experience_vehicle',
+  'digital_media_displays', 'networking_environment', 'other',
+])
+
+// snacketnow.com/pulse — public, QR-code-accessed SNACKET Audience Pulse™ survey intake.
+// One row per attendee response, inserted straight into SNACKET-OS's
+// activation_survey_responses table — lead capture (wants_contact) is opt-in, so most
+// submissions are anonymous stats feeding the post-activation dashboard rather than
+// leads. Mirrors /balloons/request-addon's shape (honeypot + rate limit + validated
+// insert + awaited notify), with one deliberate difference: unlike balloons' insert
+// failure (which still has the awaited notify as a fallback record), a failed insert
+// here has no secondary record anywhere, so it always surfaces as a real 500 the
+// client should retry rather than a false-positive success.
+app.post('/pulse/submit', async (req, res) => {
+  applyCltAllianceCors(req, res)
+  const {
+    survey_slug, nps_score, brand_lift, impact_choice, impact_other,
+    wants_contact, lead_name, lead_email, lead_phone, honeypot,
+  } = req.body
+
+  if (honeypot && String(honeypot).trim() !== '') {
+    return res.json({ ok: true })
+  }
+
+  if (!survey_slug || typeof survey_slug !== 'string') {
+    return res.status(400).json({ ok: false, error: 'survey_slug is required' })
+  }
+  if (nps_score === undefined || nps_score === null || !Number.isInteger(nps_score) || nps_score < 0 || nps_score > 10) {
+    return res.status(400).json({ ok: false, error: 'nps_score must be a whole number between 0 and 10' })
+  }
+  if (!brand_lift || !PULSE_BRAND_LIFT_VALUES.has(brand_lift)) {
+    return res.status(400).json({ ok: false, error: `brand_lift must be one of: ${[...PULSE_BRAND_LIFT_VALUES].join(', ')}` })
+  }
+  if (!impact_choice || !PULSE_IMPACT_CHOICE_VALUES.has(impact_choice)) {
+    return res.status(400).json({ ok: false, error: `impact_choice must be one of: ${[...PULSE_IMPACT_CHOICE_VALUES].join(', ')}` })
+  }
+
+  // Never trust the client to omit impact_other correctly when impact_choice isn't
+  // "other" — discard whatever it sent in that case rather than passing it through.
+  let cleanImpactOther = null
+  if (impact_choice === 'other') {
+    if (!impact_other || typeof impact_other !== 'string' || impact_other.trim() === '') {
+      return res.status(400).json({ ok: false, error: 'impact_other is required when impact_choice is "other"' })
+    }
+    cleanImpactOther = impact_other.trim().slice(0, 300)
+  }
+
+  if (typeof wants_contact !== 'boolean') {
+    return res.status(400).json({ ok: false, error: 'wants_contact must be true or false' })
+  }
+
+  if (wants_contact) {
+    if (!lead_name || typeof lead_name !== 'string') {
+      return res.status(400).json({ ok: false, error: 'lead_name is required when wants_contact is true' })
+    }
+    if (lead_name.length > 200) {
+      return res.status(400).json({ ok: false, error: 'lead_name must be 200 characters or fewer' })
+    }
+    if (!lead_email || typeof lead_email !== 'string') {
+      return res.status(400).json({ ok: false, error: 'lead_email is required when wants_contact is true' })
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead_email)) {
+      return res.status(400).json({ ok: false, error: 'invalid lead_email' })
+    }
+    if (lead_email.length > 320) {
+      return res.status(400).json({ ok: false, error: 'lead_email must be 320 characters or fewer' })
+    }
+  }
+  if (lead_phone !== undefined && lead_phone !== null && lead_phone !== '') {
+    if (typeof lead_phone !== 'string') {
+      return res.status(400).json({ ok: false, error: 'lead_phone must be text' })
+    }
+    if (lead_phone.length > 40) {
+      return res.status(400).json({ ok: false, error: 'lead_phone must be 40 characters or fewer' })
+    }
+  }
+
+  const clientIp = req.ip || 'unknown'
+  try {
+    checkPulseRateLimit({ ip: clientIp, email: wants_contact ? lead_email : null })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  let snacketOs
+  try {
+    snacketOs = getSnacketOsClient()
+  } catch (err) {
+    console.error('[pulse-submit] snacket-os client init FAILED:', err.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  const { data: newResponse, error: insertError } = await snacketOs
+    .from('activation_survey_responses')
+    .insert({
+      survey_slug,
+      nps_score,
+      brand_lift,
+      impact_choice,
+      impact_other: impact_choice === 'other' ? cleanImpactOther : null,
+      wants_contact,
+      lead_name: wants_contact ? lead_name : null,
+      lead_email: wants_contact ? lead_email : null,
+      lead_phone: wants_contact ? (lead_phone || null) : null,
+      source: 'qr_public',
+    })
+    .select('id')
+    .single()
+
+  if (insertError) {
+    // No secondary record of this submission exists anywhere if the insert itself
+    // fails — unlike balloons' notify-failure fallback, this must be a real error.
+    console.error('[pulse-submit] insert FAILED:', insertError.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  if (wants_contact) {
+    // Awaited — mirrors /balloons/request-addon's notify pattern. Pure stat
+    // responses (wants_contact === false) skip this entirely; they just
+    // accumulate for the dashboard and need no live notification.
+    try {
+      await axios.post('https://flowait.app.n8n.cloud/webhook/snacket-pulse-lead-notify', {
+        survey_slug, nps_score, brand_lift, impact_choice,
+        lead_name, lead_email, lead_phone,
+        response_id: newResponse.id,
+      }, { timeout: 15000 })
+    } catch (err) {
+      console.error('[pulse-submit] notify send FAILED:', err.message)
+
+      // Same fire-and-forget failure-alert pattern as the CLT Alliance/balloon flows —
+      // a public attendee has no reason to ever tell us this failed.
+      axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-failure-alert', {
+        name: lead_name, email: lead_email, error_message: `[pulse-submit] ${err.message}`.slice(0, 2000), lead_id: newResponse.id,
+        occurred_at: new Date().toISOString(),
+      }, { timeout: 10000 }).catch(alertErr => {
+        console.error('[pulse-submit] failure alert FAILED:', alertErr.message)
+      })
+      // The response IS recorded in activation_survey_responses even though the
+      // notification failed — no reason to make the attendee retry over it.
+    }
   }
 
   res.json({ ok: true })
