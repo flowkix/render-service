@@ -482,16 +482,26 @@ app.post('/pulse/submit', async (req, res) => {
   if (!brand_lift || !PULSE_BRAND_LIFT_VALUES.has(brand_lift)) {
     return res.status(400).json({ ok: false, error: `brand_lift must be one of: ${[...PULSE_BRAND_LIFT_VALUES].join(', ')}` })
   }
-  if (!impact_choice || !PULSE_IMPACT_CHOICE_VALUES.has(impact_choice)) {
-    return res.status(400).json({ ok: false, error: `impact_choice must be one of: ${[...PULSE_IMPACT_CHOICE_VALUES].join(', ')}` })
+  // impact_choice is multi-select — an array of 1+ values, each from the allow-list.
+  // Also accept a bare string here (back-compat with the pre-multiselect frontend,
+  // deployed separately from this service — during rollout one can briefly still be
+  // live while the other has already updated) and normalize it to a 1-element array.
+  const rawImpactChoice = typeof impact_choice === 'string' ? [impact_choice] : impact_choice
+  if (
+    !Array.isArray(rawImpactChoice) || rawImpactChoice.length === 0 ||
+    rawImpactChoice.some((v) => typeof v !== 'string' || !PULSE_IMPACT_CHOICE_VALUES.has(v))
+  ) {
+    return res.status(400).json({ ok: false, error: `impact_choice must be a non-empty array of: ${[...PULSE_IMPACT_CHOICE_VALUES].join(', ')}` })
   }
+  // De-dupe defensively — a buggy/compromised client could send the same value twice.
+  const cleanImpactChoice = [...new Set(rawImpactChoice)]
 
-  // Never trust the client to omit impact_other correctly when impact_choice isn't
-  // "other" — discard whatever it sent in that case rather than passing it through.
+  // Never trust the client to omit impact_other correctly when "other" isn't among
+  // the picks — discard whatever it sent in that case rather than passing it through.
   let cleanImpactOther = null
-  if (impact_choice === 'other') {
+  if (cleanImpactChoice.includes('other')) {
     if (!impact_other || typeof impact_other !== 'string' || impact_other.trim() === '') {
-      return res.status(400).json({ ok: false, error: 'impact_other is required when impact_choice is "other"' })
+      return res.status(400).json({ ok: false, error: 'impact_other is required when impact_choice includes "other"' })
     }
     cleanImpactOther = impact_other.trim().slice(0, 300)
   }
@@ -547,8 +557,8 @@ app.post('/pulse/submit', async (req, res) => {
       survey_slug,
       nps_score,
       brand_lift,
-      impact_choice,
-      impact_other: impact_choice === 'other' ? cleanImpactOther : null,
+      impact_choice: cleanImpactChoice,
+      impact_other: cleanImpactChoice.includes('other') ? cleanImpactOther : null,
       wants_contact,
       lead_name: wants_contact ? lead_name : null,
       lead_email: wants_contact ? lead_email : null,
