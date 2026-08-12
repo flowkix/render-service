@@ -453,6 +453,16 @@ const PULSE_IMPACT_CHOICE_VALUES = new Set([
   'digital_media_displays', 'networking_environment', 'other',
 ])
 
+// Suspended 2026-08-11 per John — the lead-notify email (via n8n's
+// snacket-pulse-lead-notify webhook) wasn't reliably reaching
+// sales@snacketfoods.net (sent successfully per Gmail's API, landed
+// somewhere unclear — spam, wrong inbox, filter). The Supabase insert
+// into activation_survey_responses (SNACKET-OS) is unaffected either
+// way — leads still show up on the /pulse/[slug] dashboard, they just
+// don't also trigger an email right now. Flip back to true once the
+// destination inbox/delivery issue is sorted.
+const PULSE_LEAD_NOTIFY_ENABLED = false
+
 // snacketnow.com/pulse — public, QR-code-accessed SNACKET Audience Pulse™ survey intake.
 // One row per attendee response, inserted straight into SNACKET-OS's
 // activation_survey_responses table — lead capture (wants_contact) is opt-in, so most
@@ -575,7 +585,7 @@ app.post('/pulse/submit', async (req, res) => {
     return res.status(500).json({ ok: false, error: 'internal error' })
   }
 
-  if (wants_contact) {
+  if (wants_contact && PULSE_LEAD_NOTIFY_ENABLED) {
     // Awaited — mirrors /balloons/request-addon's notify pattern. Pure stat
     // responses (wants_contact === false) skip this entirely; they just
     // accumulate for the dashboard and need no live notification.
