@@ -24,6 +24,13 @@
       "note": "At least one other person (bystander, passerby) should be visible somewhere in the scene near the EV — staff should not appear completely alone with nobody else anywhere in the frame. Pose, gesture, and the specific form of interaction are NOT constrained — any natural, freely-chosen pose is acceptable."
     },
     {
+      "id": "ev-shape-texture-fidelity",
+      "appliesTo": "scene",
+      "active": true,
+      "failureMode": "Scene pass drifts the EV's overall body shape/size toward a generic delivery/box van, or drops the coffee-bean pattern decorative skirt at the vehicle's base",
+      "note": "The vehicle's overall body shape, size, and proportions must match IMAGE A exactly — it is a compact, narrow-body EV truck, never a generic box van, cargo van, or food truck of different size or silhouette. The coffee-bean pattern decorative skirt at the base of the vehicle must be reproduced pixel-faithful, the same as the vehicle's branding — do not simplify, omit, or replace it with a plain surface, regardless of venue or theme."
+    },
+    {
       "id": "no-activation-infrastructure",
       "appliesTo": "scene",
       "active": true,
