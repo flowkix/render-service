@@ -1373,7 +1373,19 @@ app.get('/ev-wrap-zones/:vehicleSlug', (req, res) => {
   }
 })
 
+// Called directly via fetch() from the browser on the public Stage A deck page
+// (snacketnow.com/deck/<uuid>) and the pitch-deck page — same cross-origin CORS
+// requirement as the CLT Alliance/Balloons/Pulse routes above (see comment on
+// GENERATOR_ALLOWED_ORIGINS). Missing here until now: real bug, confirmed 2026-08-15 —
+// "Download PDF" on the deck page always failed with a browser-only CORS error
+// (server-to-server calls to this same route worked fine, masking it in curl/axios tests).
+app.options('/generate-pdf', (req, res) => {
+  applyCltAllianceCors(req, res)
+  res.sendStatus(204)
+})
+
 app.post('/generate-pdf', async (req, res) => {
+  applyCltAllianceCors(req, res)
   const { deck_url, prospect_id } = req.body
   if (!deck_url || !prospect_id) {
     return res.status(400).json({ ok: false, error: 'deck_url and prospect_id required' })
