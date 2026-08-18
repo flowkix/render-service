@@ -20,9 +20,13 @@ async function generateDeckPdf({ deckUrl, prospectId }) {
     const page = await browser.newPage()
     await page.setViewport({ width: 1280, height: 720 })
     await page.goto(deckUrl, { waitUntil: 'networkidle2', timeout: 60000 })
+    // deck/index.html's @media print block sizes each .page as 210mm x 297mm (portrait) —
+    // landscape:true here mismatched that, leaving each page's content pinned to the left
+    // of a wider landscape canvas with the uncovered remainder rendering solid black
+    // (confirmed 2026-08-18 via side-by-side diagnostic renders). Portrait matches the CSS.
     pdfBuffer = await page.pdf({
       format: 'A4',
-      landscape: true,
+      landscape: false,
       printBackground: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
     })
