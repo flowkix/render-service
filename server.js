@@ -1088,12 +1088,17 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
     return res.status(401).json({ ok: false, error: 'unauthorized' })
   }
 
-  const { source, company_name, logo_source, theme, venue } = req.body
+  const { source, company_name, logo_source, theme, venue, current_image_url, edit_instruction } = req.body
   if (!source || !company_name || !logo_source || !theme || !venue) {
     return res.status(400).json({
       ok: false,
       error: 'source, company_name, logo_source, theme, and venue are required',
     })
+  }
+  // current_image_url must be a real http(s) URL, same SSRF constraint as logo_source below —
+  // never a bare local-file-path string (fetchBuffer's default behavior for non-http strings).
+  if (current_image_url !== undefined && !/^https?:\/\//i.test(String(current_image_url))) {
+    return res.status(400).json({ ok: false, error: 'current_image_url must be an http(s) URL' })
   }
 
   try {
@@ -1104,7 +1109,7 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
 
   const tmpPath = path.join(os.tmpdir(), `scene-simple_${randomUUID()}.png`)
   try {
-    console.log(`[scene-simple] start — ${source} / ${company_name}`)
+    console.log(`[scene-simple] start — ${source} / ${company_name}${current_image_url ? ' (edit mode)' : ''}`)
 
     // Resolve logo_source to a Buffer ourselves — same SSRF-safe pattern as
     // /generate-ev-scene-v2 (see that route's comment for why: fetchBuffer() in
@@ -1120,11 +1125,18 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
       throw new Error('logo_source must be a data: URL or an http(s) URL')
     }
 
+    // 2026-08-28 (deck-review-regen edit mode): current_image_url is the deck's existing
+    // scene photo — when present, runSimpleFull refines it (isEditMode) instead of
+    // generating a brand-new scene from scratch, the fix for occasional EV hallucination.
+    const currentSceneBuffer = current_image_url ? await fetchPublicUrlBuffer(current_image_url) : undefined
+
     const { scene } = await runSimpleFull({
       companyName: company_name,
       logoSource: logoBuffer,
       theme,
       venue,
+      currentSceneBuffer,
+      editInstruction: edit_instruction,
     })
     fs.writeFileSync(tmpPath, scene.buffer)
     const storagePath = `scene-simple/${source}/${randomUUID()}.png`
