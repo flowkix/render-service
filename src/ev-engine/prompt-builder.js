@@ -208,6 +208,43 @@ function buildSimpleScenePrompt({
   return { prompt: `${body}\n${notes}`.trim(), aspectRatio }
 }
 
+/**
+ * Stage 2 (simple variant) — EDIT-MODE prompt, used by the "Regenerate" control on
+ * Stage A's deck-review page (hub/.../stage-a/review/[deck_id]) instead of
+ * buildSimpleScenePrompt above. IMAGE A = the CURRENT scene photo (primary
+ * reference — refine it, don't reinvent it). IMAGE B = a freshly branded EV
+ * (identity anchor — the vehicle in IMAGE A must match this exactly). IMAGE C =
+ * client logo, optional.
+ *
+ * This exists because create-mode (buildSimpleScenePrompt) asks Gemini to invent
+ * a whole scene around a reference image, which occasionally drifts on vehicle
+ * geometry ("AI hallucinated a different EV" — 2026-08-28). Edit mode anchors on
+ * the actual previous output and asks for a narrow, scoped change (or a
+ * quality-only refinement when editInstruction is empty) — same technique already
+ * proven in hub's Stage B `ai-regen` route (see hub/src/app/api/proposals/
+ * [review_token]/ai-regen/route.ts).
+ */
+function buildSimpleSceneEditPrompt({ editInstruction, simpleCorrectionsConfig }) {
+  const instructionBlock = editInstruction && String(editInstruction).trim()
+    ? `Apply ONLY this change: "${String(editInstruction).trim()}"\n\nChange nothing else — same people, same backdrop, same lighting, same composition.`
+    : 'No specific change requested — produce a refined, higher-quality version of IMAGE A: same scene, same people, same composition, same backdrop. Only improve sharpness, lighting quality, and photorealistic rendering depth.'
+
+  const body = [
+    'IMAGE A = the CURRENT scene photo (primary reference) — your output must look like a refined version of THIS exact image, not a new scene.',
+    'IMAGE B = the official branded EV reference — the vehicle in IMAGE A must match IMAGE B exactly: same body shape, same color, same gull-wing doors, same interior equipment. If the vehicle in IMAGE A drifted from IMAGE B in any way, correct it to match IMAGE B as part of this edit.',
+    '',
+    'TASK:',
+    instructionBlock,
+    '',
+    'STRICT RULES:',
+    '- Do not redesign, recreate, or "improve" anything beyond what is explicitly requested above.',
+    '- Preserve the photorealistic commercial quality and aspect ratio of IMAGE A.',
+  ].join('\n')
+
+  const notes = correctionNotesBlock(activeCorrections(simpleCorrectionsConfig, 'scene'))
+  return { prompt: `${body}\n${notes}`.trim() }
+}
+
 const DECOR_REFERENCE_DEFAULTS = {
   aspect_ratio: '4:3',
 }
@@ -249,4 +286,4 @@ function buildDecorReferencePrompt({
   return { prompt: `${body}\n${notes}`.trim(), aspectRatio }
 }
 
-module.exports = { buildBrandingPrompt, buildScenePrompt, buildSimpleScenePrompt, buildDecorReferencePrompt, activeCorrections }
+module.exports = { buildBrandingPrompt, buildScenePrompt, buildSimpleScenePrompt, buildSimpleSceneEditPrompt, buildDecorReferencePrompt, activeCorrections }

@@ -70,7 +70,14 @@ async function runFull(
 }
 
 async function runSimpleFull(
-  { companyName, logoSource, zones = 'all', theme, venue, params = {}, brandingOverride, sceneOverride, cache = null, vehicle },
+  {
+    companyName, logoSource, zones = 'all', theme, venue, params = {},
+    brandingOverride, sceneOverride, cache = null, vehicle,
+    // 2026-08-28 — optional edit-mode passthrough (see runSimpleSceneStage). Branding
+    // stage always runs regardless: its output is the EV-identity anchor image edit
+    // mode references to correct any vehicle drift, not just the create-mode primary.
+    currentSceneBuffer, editInstruction,
+  },
   configs = loadEngineConfig(vehicle)
 ) {
   const branding = await runBrandingStage({
@@ -80,6 +87,7 @@ async function runSimpleFull(
   })
   const scene = await runSimpleSceneStage({
     companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, params,
+    currentSceneBuffer, editInstruction,
     providerOverride: sceneOverride,
     ...configs,
   })
