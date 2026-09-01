@@ -212,9 +212,10 @@ function buildSimpleScenePrompt({
  * Stage 2 (simple variant) — EDIT-MODE prompt, used by the "Regenerate" control on
  * Stage A's deck-review page (hub/.../stage-a/review/[deck_id]) instead of
  * buildSimpleScenePrompt above. IMAGE A = the CURRENT scene photo (primary
- * reference — refine it, don't reinvent it). IMAGE B = a freshly branded EV
- * (identity anchor — the vehicle in IMAGE A must match this exactly). IMAGE C =
- * client logo, optional.
+ * reference — refine it, don't reinvent it). IMAGE B = the engine's fixed, raw
+ * (unbranded) SNACKET EV reference photo — the SAME source file the branding stage
+ * itself starts from, never AI-regenerated — used ONLY as a structure/geometry
+ * anchor. IMAGE C = client logo, optional, for branding fidelity.
  *
  * This exists because create-mode (buildSimpleScenePrompt) asks Gemini to invent
  * a whole scene around a reference image, which occasionally drifts on vehicle
@@ -223,21 +224,32 @@ function buildSimpleScenePrompt({
  * quality-only refinement when editInstruction is empty) — same technique already
  * proven in hub's Stage B `ai-regen` route (see hub/src/app/api/proposals/
  * [review_token]/ai-regen/route.ts).
+ *
+ * 2026-09-01 (bug fix): IMAGE B used to be a freshly Gemini-regenerated "branded EV"
+ * (index.js's own branding-stage output for this call) instead of the fixed raw
+ * reference. That made the anchor itself unreliable — a bad branding-stage run
+ * silently corrupted the "ground truth" edit mode was told to correct toward.
+ * Confirmed live: an explicit correction instruction to fix the vehicle back to
+ * SNACKET's real design produced a DIFFERENT wrong vehicle instead, because that
+ * call's branding-stage output had drifted too. The raw reference never changes,
+ * so it can't drift — same reasoning as Stage B's ai-regen route, which anchors on
+ * a fixed reference file for exactly this reason.
  */
 function buildSimpleSceneEditPrompt({ editInstruction, simpleCorrectionsConfig }) {
   const instructionBlock = editInstruction && String(editInstruction).trim()
-    ? `Apply ONLY this change: "${String(editInstruction).trim()}"\n\nChange nothing else — same people, same backdrop, same lighting, same composition.`
+    ? `Apply this change: "${String(editInstruction).trim()}"\n\nOtherwise change nothing else — same people, same backdrop, same lighting, same composition.`
     : 'No specific change requested — produce a refined, higher-quality version of IMAGE A: same scene, same people, same composition, same backdrop. Only improve sharpness, lighting quality, and photorealistic rendering depth.'
 
   const body = [
     'IMAGE A = the CURRENT scene photo (primary reference) — your output must look like a refined version of THIS exact image, not a new scene.',
-    'IMAGE B = the official branded EV reference — the vehicle in IMAGE A must match IMAGE B exactly: same body shape, same color, same gull-wing doors, same interior equipment. If the vehicle in IMAGE A drifted from IMAGE B in any way, correct it to match IMAGE B as part of this edit.',
+    'IMAGE B = the OFFICIAL RAW SNACKET EV REFERENCE (plain/unbranded) — use this ONLY to verify and correct the vehicle\'s physical STRUCTURE in IMAGE A: overall body shape, roof (flat and rectangular, never domed/curved/angled), gull-wing door geometry, wheels, cab, and hardware. If the vehicle in IMAGE A has drifted from this structure in any way, correct it to match IMAGE B\'s structure as part of this edit.',
+    'IMPORTANT — branding is NOT part of that correction: IMAGE B shows SNACKET\'s own default markings, not the client\'s. The client\'s branding/logos already correctly shown in IMAGE A (or provided fresh via IMAGE C, if present) must be preserved exactly — never replace them with anything from IMAGE B, and never leave the vehicle unbranded.',
     '',
     'TASK:',
     instructionBlock,
     '',
     'STRICT RULES:',
-    '- Do not redesign, recreate, or "improve" anything beyond what is explicitly requested above.',
+    '- Do not redesign, recreate, or "improve" anything beyond what is explicitly requested above and the structure correction described for IMAGE B.',
     '- Preserve the photorealistic commercial quality and aspect ratio of IMAGE A.',
   ].join('\n')
 

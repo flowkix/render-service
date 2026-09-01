@@ -73,13 +73,42 @@ async function runSimpleFull(
   {
     companyName, logoSource, zones = 'all', theme, venue, params = {},
     brandingOverride, sceneOverride, cache = null, vehicle,
-    // 2026-08-28 — optional edit-mode passthrough (see runSimpleSceneStage). Branding
-    // stage always runs regardless: its output is the EV-identity anchor image edit
-    // mode references to correct any vehicle drift, not just the create-mode primary.
+    // 2026-08-28 — optional edit-mode passthrough (see runSimpleSceneStage).
     currentSceneBuffer, editInstruction,
   },
   configs = loadEngineConfig(vehicle)
 ) {
+  const isEditMode = !!currentSceneBuffer
+
+  // 2026-09-01 (bug fix): edit mode used to still run the full branding stage and use
+  // ITS OWN output (a freshly Gemini-regenerated "branded EV") as the vehicle-geometry
+  // anchor. That's an unreliable anchor — the branding stage is itself an AI generation
+  // step that can drift (wrong roof, wrong proportions, etc., the exact class of bug
+  // this whole edit-mode feature exists to fix), so a bad branding-stage run silently
+  // corrupted the "ground truth" edit mode was told to correct TOWARD. Confirmed live:
+  // a user gave an explicit correction instruction ("make sure the EV matches the real
+  // SNACKET reference") and regenerate produced a DIFFERENT wrong vehicle instead of the
+  // real one — the branding-stage run for that call had drifted too.
+  //
+  // Fix: skip branding stage entirely in edit mode (saves a full Gemini call — it isn't
+  // needed here anyway, IMAGE A already carries whatever branding was previously
+  // applied) and instead pass the engine's own fixed, never-regenerated raw EV reference
+  // photo (zonesConfig.referenceImage — the actual source-of-truth photo, same file the
+  // branding stage itself starts from) straight through as the geometry anchor. This
+  // matches Stage B's proven ai-regen pattern (hub/src/app/api/proposals/[review_token]/
+  // ai-regen/route.ts), which anchors on the same kind of fixed raw reference, not a
+  // regenerated derivative.
+  if (isEditMode) {
+    const scene = await runSimpleSceneStage({
+      companyName, logoSource, theme, venue, params,
+      currentSceneBuffer, editInstruction,
+      rawEvReferenceUrl: configs.zonesConfig.referenceImage,
+      providerOverride: sceneOverride,
+      ...configs,
+    })
+    return { branding: null, scene }
+  }
+
   const branding = await runBrandingStage({
     companyName, logoSource, zones,
     providerOverride: brandingOverride, cache,
@@ -87,7 +116,6 @@ async function runSimpleFull(
   })
   const scene = await runSimpleSceneStage({
     companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, params,
-    currentSceneBuffer, editInstruction,
     providerOverride: sceneOverride,
     ...configs,
   })
