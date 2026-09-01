@@ -18,7 +18,9 @@ const EDIT_MODE_ASPECT_RATIO = '16:9' // matches SIMPLE_SCENE_DEFAULTS.aspect_ra
  * review "Regenerate" control (2026-08-28) to refine the existing scene instead of
  * generating a brand-new one from scratch, which is what was causing occasional EV-vehicle
  * hallucination. When present, `theme`/`venue` are still accepted (callers may keep sending
- * the deck's original brief) but are unused — see buildSimpleSceneEditPrompt.
+ * the deck's original brief) but are unused — see buildSimpleSceneEditPrompt. `brandedEvBuffer`
+ * is create-mode-only; edit mode instead takes `rawEvReferenceUrl` (2026-09-01 bug fix — see
+ * index.js's runSimpleFull for why a freshly-regenerated branded EV was the wrong anchor).
  */
 async function runSimpleSceneStage({
   companyName,
@@ -34,6 +36,7 @@ async function runSimpleSceneStage({
   providerOverride,
   currentSceneBuffer,
   editInstruction,
+  rawEvReferenceUrl,
 }) {
   const stageCfg = engineConfig.stages.scene
   const providerName = providerOverride?.provider || stageCfg.provider
@@ -41,6 +44,7 @@ async function runSimpleSceneStage({
 
   const logoBuffer = await fetchBuffer(logoSource)
   const isEditMode = !!currentSceneBuffer
+  const rawEvReferenceBuffer = isEditMode ? await fetchBuffer(rawEvReferenceUrl) : null
 
   const { prompt, aspectRatio } = isEditMode
     ? { ...buildSimpleSceneEditPrompt({ editInstruction, simpleCorrectionsConfig }), aspectRatio: EDIT_MODE_ASPECT_RATIO }
@@ -57,7 +61,7 @@ async function runSimpleSceneStage({
   const images = isEditMode
     ? [
         { buffer: currentSceneBuffer, mimeType: sniffMime(currentSceneBuffer), role: 'primary' },
-        { buffer: brandedEvBuffer, mimeType: sniffMime(brandedEvBuffer), role: 'ref' },
+        { buffer: rawEvReferenceBuffer, mimeType: sniffMime(rawEvReferenceBuffer, rawEvReferenceUrl), role: 'ref' },
         { buffer: logoBuffer, mimeType: sniffMime(logoBuffer, String(logoSource)), role: 'ref' },
       ]
     : [
