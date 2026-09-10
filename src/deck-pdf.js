@@ -1,5 +1,10 @@
 const puppeteer = require('puppeteer')
 const axios = require('axios')
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
+const { spawn } = require('child_process')
+const { randomUUID } = require('crypto')
 
 // A fully-rendered deck PDF (7 pages, each with a full-bleed background photo plus
 // card/panel imagery) is reliably well over this size. A PDF at or below it is a strong
@@ -47,6 +52,53 @@ async function waitForDeckReady (page) {
       probe.src = url
     })))
   })
+}
+
+// Chromium's print-to-PDF embeds PNG-sourced background photos (e.g. an AI-composited
+// EV scene) as near-lossless Flate raster instead of JPEG — a single 1830x1125 image
+// weighed 4MB+ raw, and one real 7-page deck came out to 11MB (confirmed via
+// `pdfimages -list` on a live-generated deck, 2026-09-10). That's what made "swipe
+// between pages" feel stuck in desktop PDF viewers (reported live by John): every
+// page-paint had to decode several megabytes of raw pixels per page instead of a
+// hardware-friendly JPEG. Ghostscript's /ebook preset (150dpi color downsample) cut
+// that same file to 2.1MB with no visible quality loss at normal viewing size
+// (verified side-by-side before shipping this). Never let a missing/failing `gs`
+// binary break PDF generation — fall back to the uncompressed original.
+async function compressPdf (pdfBuffer) {
+  const inPath = path.join(os.tmpdir(), `deck_in_${randomUUID()}.pdf`)
+  const outPath = path.join(os.tmpdir(), `deck_out_${randomUUID()}.pdf`)
+  fs.writeFileSync(inPath, pdfBuffer)
+
+  try {
+    await new Promise((resolve, reject) => {
+      const proc = spawn(process.env.GS_BIN || 'gs', [
+        '-sDEVICE=pdfwrite',
+        '-dCompatibilityLevel=1.4',
+        '-dPDFSETTINGS=/ebook',
+        '-dNOPAUSE', '-dQUIET', '-dBATCH',
+        '-dDownsampleColorImages=true', '-dColorImageResolution=150', '-dColorImageDownsampleType=/Bicubic',
+        `-sOutputFile=${outPath}`,
+        inPath,
+      ])
+      let stderr = ''
+      proc.stderr.on('data', d => { stderr += d.toString() })
+      proc.on('error', reject) // e.g. gs binary not found
+      proc.on('close', code => {
+        if (code === 0) resolve()
+        else reject(new Error(`Ghostscript exit ${code}: ${stderr.slice(-500)}`))
+      })
+    })
+
+    const compressed = fs.readFileSync(outPath)
+    if (compressed.length === 0) throw new Error('Ghostscript produced an empty file')
+    return compressed
+  } catch (err) {
+    console.warn(`[deck-pdf] compression failed (${err.message}) — shipping uncompressed PDF`)
+    return pdfBuffer
+  } finally {
+    try { fs.unlinkSync(inPath) } catch (_) {}
+    try { fs.unlinkSync(outPath) } catch (_) {}
+  }
 }
 
 async function renderPdfOnce ({ browser, deckUrl }) {
@@ -103,6 +155,10 @@ async function generateDeckPdf ({ deckUrl, prospectId }) {
   } finally {
     await browser.close()
   }
+
+  const rawBytes = pdfBuffer.length
+  pdfBuffer = await compressPdf(pdfBuffer)
+  console.log(`[deck-pdf] compressed ${prospectId}: ${rawBytes} → ${pdfBuffer.length} bytes`)
 
   const storagePath = `deck-pdf/${prospectId}.pdf`
   const uploadUrl = `${sbUrl}/storage/v1/object/snacket-assets/${storagePath}`

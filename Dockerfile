@@ -4,12 +4,16 @@ FROM node:20-slim
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# FFmpeg + Sharp native deps (libvips) + font tooling + system Chromium
+# FFmpeg + Sharp native deps (libvips) + font tooling + system Chromium + Ghostscript
+# (Ghostscript post-compresses deck PDFs — deck-pdf.js's compressPdf — since Chromium's
+# print-to-PDF embeds PNG-sourced photos near-losslessly, producing 10MB+ decks that
+# felt "stuck" paging through in desktop PDF viewers; found+fixed 2026-09-10)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     fontconfig \
     libvips42 \
     chromium \
+    ghostscript \
     --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 # Bundle Barlow Condensed font
