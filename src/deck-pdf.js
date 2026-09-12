@@ -160,7 +160,17 @@ async function generateDeckPdf ({ deckUrl, prospectId }) {
   pdfBuffer = await compressPdf(pdfBuffer)
   console.log(`[deck-pdf] compressed ${prospectId}: ${rawBytes} → ${pdfBuffer.length} bytes`)
 
-  const storagePath = `deck-pdf/${prospectId}.pdf`
+  // Timestamped, not a fixed deck-pdf/${prospectId}.pdf — Cloudflare (fronting Supabase
+  // Storage) was confirmed live (2026-09-12) to keep serving an old cached response for
+  // a storage path after a fresh x-upsert overwrite, `Cache-Control: no-cache` on the
+  // object notwithstanding (CF-Cache-Status: HIT anyway) — a client-side cache-busting
+  // query string on the download didn't help either, since Cloudflare's cache key here
+  // ignores query strings. A rep regenerating a PDF (edit photos, hit Retry, click
+  // Download PDF again) could silently receive the PREVIOUS version. A unique path per
+  // generation sidesteps the CDN entirely — nothing to invalidate, no caller changes
+  // needed since every caller (n8n, the deck's own Download PDF button) already just
+  // uses whatever pdf_url this returns rather than assuming a fixed one.
+  const storagePath = `deck-pdf/${prospectId}-${Date.now()}.pdf`
   const uploadUrl = `${sbUrl}/storage/v1/object/snacket-assets/${storagePath}`
   await axios.put(uploadUrl, pdfBuffer, {
     headers: {
