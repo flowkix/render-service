@@ -171,6 +171,7 @@ function buildSimpleScenePrompt({
   presetsConfig,
   simplePresetsConfig,
   simpleCorrectionsConfig,
+  includeRawReference = false,
 }) {
   if (!theme || !String(theme).trim()) throw new Error('theme is required')
   if (!venue || !String(venue).trim()) throw new Error('venue is required')
@@ -205,7 +206,19 @@ function buildSimpleScenePrompt({
   const notes = correctionNotesBlock(activeCorrections(simpleCorrectionsConfig, 'scene'))
   const aspectRatio = resolveOption('aspect_ratio', merged.aspect_ratio)
 
-  return { prompt: `${body}\n${notes}`.trim(), aspectRatio }
+  // 2026-09-24 (bug fix — see index.js's runSimpleFull): create mode's IMAGE A is
+  // brandedEvBuffer, itself a Gemini-regenerated derivative of the raw reference (stage 1's
+  // own output) — it can drift from the real vehicle before scene-stage even runs, and this
+  // prompt previously had no independent, never-regenerated ground truth to correct against.
+  // Root-caused live 2026-08-17 (a real Stage A EV came out shaped like a generic van); the
+  // recommended fix sat unapplied until a fresh hallucination report on the same capability
+  // surfaced it again. When the caller supplies the raw reference as a 3rd image (IMAGE C),
+  // describe its role here — anchors structure only, never branding.
+  const rawRefNote = includeRawReference
+    ? `\n\nIMAGE C = the OFFICIAL RAW (unbranded) SNACKET EV reference photo — use this ONLY to verify and correct the vehicle's physical STRUCTURE: overall body shape, size, proportions, roof, gull-wing door geometry, wheels, cab, and the coffee-bean pattern decorative skirt at the base. If IMAGE A's vehicle structure has drifted from IMAGE C in any way, correct it to match IMAGE C's structure as part of this generation. IMAGE C shows SNACKET's own default markings, not ${companyName}'s — never copy its branding onto the vehicle; the branding already applied in IMAGE A is final and correct.`
+    : ''
+
+  return { prompt: `${body}\n${notes}${rawRefNote}`.trim(), aspectRatio }
 }
 
 /**
