@@ -44,7 +44,12 @@ async function runSimpleSceneStage({
 
   const logoBuffer = await fetchBuffer(logoSource)
   const isEditMode = !!currentSceneBuffer
-  const rawEvReferenceBuffer = isEditMode ? await fetchBuffer(rawEvReferenceUrl) : null
+  // 2026-09-24: rawEvReferenceUrl is now also supplied in create mode (see index.js) — same
+  // fixed, never-regenerated ground-truth photo edit mode already anchors on, added here to
+  // close the gap root-caused 2026-08-17: create mode's only vehicle reference used to be
+  // brandedEvBuffer (stage 1's own regenerated output), which can drift before scene-stage
+  // even runs.
+  const rawEvReferenceBuffer = rawEvReferenceUrl ? await fetchBuffer(rawEvReferenceUrl) : null
 
   const { prompt, aspectRatio } = isEditMode
     ? { ...buildSimpleSceneEditPrompt({ editInstruction, simpleCorrectionsConfig }), aspectRatio: EDIT_MODE_ASPECT_RATIO }
@@ -56,6 +61,7 @@ async function runSimpleSceneStage({
         presetsConfig,
         simplePresetsConfig,
         simpleCorrectionsConfig,
+        includeRawReference: !!rawEvReferenceBuffer,
       })
 
   const images = isEditMode
@@ -66,6 +72,7 @@ async function runSimpleSceneStage({
       ]
     : [
         { buffer: brandedEvBuffer, mimeType: sniffMime(brandedEvBuffer), role: 'primary' },
+        ...(rawEvReferenceBuffer ? [{ buffer: rawEvReferenceBuffer, mimeType: sniffMime(rawEvReferenceBuffer, rawEvReferenceUrl), role: 'ref' }] : []),
         { buffer: logoBuffer, mimeType: sniffMime(logoBuffer, String(logoSource)), role: 'ref' },
       ]
 

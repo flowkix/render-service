@@ -116,6 +116,13 @@ async function runSimpleFull(
   })
   const scene = await runSimpleSceneStage({
     companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, params,
+    // 2026-09-24 (bug fix): create mode used to give scene-stage NO independent vehicle
+    // reference — only brandedEvBuffer, itself a regenerated derivative of this same file
+    // that can already have drifted. Root-caused 2026-08-17 (real Stage A EV came out
+    // shaped like a generic van), fix sat unapplied until a fresh report on the same
+    // capability (2026-09-24) surfaced it again. Same fixed ground truth edit mode already
+    // anchors on (see the isEditMode branch above).
+    rawEvReferenceUrl: configs.zonesConfig.referenceImage,
     providerOverride: sceneOverride,
     ...configs,
   })
