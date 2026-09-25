@@ -1130,6 +1130,15 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
     // generating a brand-new scene from scratch, the fix for occasional EV hallucination.
     const currentSceneBuffer = current_image_url ? await fetchPublicUrlBuffer(current_image_url) : undefined
 
+    // 2026-09-24 (bug fix): Business Card Capture has no real client logo (it passes
+    // SNACKET's own logo as logo_source) — asking the branding prompt to "rebrand" the EV
+    // with the prospect's company name using SNACKET's own logo "exactly" produced a
+    // garbled hybrid mark. Same pattern already established for the pitch-elevator
+    // hallucination fix (2026-08-10, brandingOverride keyed off `source` below this route):
+    // branch behavior by caller identity, isolated to this one `source` value, every other
+    // caller unaffected. See src/ev-engine/index.js's runSimpleFull skipBranding branch.
+    const skipBranding = source === 'business-card-capture'
+
     const { scene } = await runSimpleFull({
       companyName: company_name,
       logoSource: logoBuffer,
@@ -1137,6 +1146,7 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
       venue,
       currentSceneBuffer,
       editInstruction: edit_instruction,
+      skipBranding,
     })
     fs.writeFileSync(tmpPath, scene.buffer)
     const storagePath = `scene-simple/${source}/${randomUUID()}.png`

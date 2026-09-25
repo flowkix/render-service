@@ -2,6 +2,7 @@
 const path = require('path')
 const fs = require('fs')
 const { loadZonesConfig, resolveZonesFileName } = require('./zones')
+const { fetchBuffer } = require('./assets')
 const { runBrandingStage } = require('./pipeline/branding-stage')
 const { runSceneStage } = require('./pipeline/scene-stage')
 const { runSimpleSceneStage } = require('./pipeline/simple-scene-stage')
@@ -75,6 +76,8 @@ async function runSimpleFull(
     brandingOverride, sceneOverride, cache = null, vehicle,
     // 2026-08-28 — optional edit-mode passthrough (see runSimpleSceneStage).
     currentSceneBuffer, editInstruction,
+    // 2026-09-24 — Business Card Capture bug fix (see the skipBranding branch below).
+    skipBranding = false,
   },
   configs = loadEngineConfig(vehicle)
 ) {
@@ -109,20 +112,41 @@ async function runSimpleFull(
     return { branding: null, scene }
   }
 
-  const branding = await runBrandingStage({
-    companyName, logoSource, zones,
-    providerOverride: brandingOverride, cache,
-    ...configs,
-  })
+  // 2026-09-24 (bug fix, Business Card Capture): that caller has no real client logo — it
+  // passes SNACKET's OWN logo as logoSource while the branding prompt is told "replace
+  // SNACKET's branding with {{companyName}}'s branding, using this logo exactly." That's a
+  // direct contradiction (the logo it must reproduce "exactly" IS SNACKET's own), and it
+  // produced a garbled hybrid mark on the EV in production: a mangled mashup of SNACKET's
+  // plug icon, an attempted "{{companyName}}" text overlay, and a corrupted tagline.
+  // Reported live 2026-09-24 (screenshot of a real business-card-deck). Since there's no
+  // real client logo to apply, skip the fake-rebrand pass entirely — reproduce the vehicle
+  // exactly as it really is (SNACKET's own real branding), no fabricated company name
+  // anywhere on it. `companyName` passed to the scene prompt becomes 'SNACKET' in this
+  // branch specifically so every "branded for {{companyName}}" sentence in the template
+  // stays literally true — the real prospect's company name is unaffected everywhere else
+  // (the deck, the emails) and never touches this generation.
+  let branding
+  if (skipBranding) {
+    const rawBuffer = await fetchBuffer(configs.zonesConfig.referenceImage)
+    branding = { buffer: rawBuffer, cached: false, meta: { provider: 'none', skipped: true } }
+  } else {
+    branding = await runBrandingStage({
+      companyName, logoSource, zones,
+      providerOverride: brandingOverride, cache,
+      ...configs,
+    })
+  }
   const scene = await runSimpleSceneStage({
-    companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, params,
+    companyName: skipBranding ? 'SNACKET' : companyName,
+    brandedEvBuffer: branding.buffer, logoSource, theme, venue, params,
     // 2026-09-24 (bug fix): create mode used to give scene-stage NO independent vehicle
     // reference — only brandedEvBuffer, itself a regenerated derivative of this same file
     // that can already have drifted. Root-caused 2026-08-17 (real Stage A EV came out
     // shaped like a generic van), fix sat unapplied until a fresh report on the same
     // capability (2026-09-24) surfaced it again. Same fixed ground truth edit mode already
-    // anchors on (see the isEditMode branch above).
-    rawEvReferenceUrl: configs.zonesConfig.referenceImage,
+    // anchors on (see the isEditMode branch above). Not needed when skipBranding — brandedEvBuffer
+    // already IS the raw reference file, unaltered, so there's no drift to correct.
+    rawEvReferenceUrl: skipBranding ? undefined : configs.zonesConfig.referenceImage,
     providerOverride: sceneOverride,
     ...configs,
   })
