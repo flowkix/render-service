@@ -18,6 +18,7 @@ const { uploadImage } = require('./src/supabase')
 const { runBranding, runFull, runSimpleFull, runDecorReference } = require('./src/ev-engine')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
+const { isAllowedGuidesOrigin, validateGuideRequest, buildLeadRecord, buildWebhookPayload } = require('./src/guides/guide-request')
 const { checkSimpleSceneRateLimit } = require('./src/ev-engine/scene-simple-rate-limiter')
 const { checkBrandingRateLimit } = require('./src/ev-engine/branding-rate-limiter')
 const { checkDecorReferenceRateLimit } = require('./src/ev-engine/decor-reference-rate-limiter')
@@ -732,6 +733,104 @@ app.post('/clt-alliance/request-guide', async (req, res) => {
       console.error('[clt-alliance-guide] failure alert FAILED:', alertErr.message)
     })
 
+    return res.status(500).json({ ok: false, error: 'Could not send your guide — please try again.' })
+  }
+
+  res.json({ ok: true })
+})
+
+// snacketnow.com/guides/* — SNACKET guide lead magnets (Sponsor Renewal Equation,
+// Community Investment). Same shape as /clt-alliance/request-guide: honeypot + rate
+// limit + best-effort lead insert + awaited email send. Validation and record shapes
+// live in src/guides/guide-request.js. CORS also admits this project's Vercel
+// preview deployments so the funnel can be tested end to end before go-live.
+function applyGuidesCors(req, res) {
+  const origin = req.headers.origin
+  if (isAllowedGuidesOrigin(origin)) {
+    res.set('Access-Control-Allow-Origin', origin)
+    res.set('Vary', 'Origin')
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.set('Access-Control-Allow-Headers', 'Content-Type')
+  }
+}
+
+app.options('/guides/request', (req, res) => {
+  applyGuidesCors(req, res)
+  res.sendStatus(204)
+})
+
+app.post('/guides/request', async (req, res) => {
+  applyGuidesCors(req, res)
+
+  const check = validateGuideRequest(req.body)
+  if (check.honeypot) return res.json({ ok: true })
+  if (!check.ok) return res.status(400).json({ ok: false, error: check.error })
+  const value = check.value
+
+  try {
+    checkGuideRateLimit({ ip: req.ip || 'unknown', email: value.email })
+  } catch (err) {
+    return res.status(429).json({ ok: false, error: err.message })
+  }
+
+  let snacketOs
+  try {
+    snacketOs = getSnacketOsClient()
+  } catch (err) {
+    console.error('[guides-request] snacket-os client init FAILED:', err.message)
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+
+  // One Pipeline lead per email per guide; a repeat request refreshes it instead of
+  // creating a duplicate card. Best-effort: a DB failure must not block the email.
+  const lead = buildLeadRecord(value)
+  let leadId = null
+  try {
+    const { data: existingLead } = await snacketOs
+      .from('leads')
+      .select('id')
+      .eq('prospect_email', value.email)
+      .eq('source', lead.source)
+      .maybeSingle()
+
+    if (existingLead) {
+      leadId = existingLead.id
+      await snacketOs.from('leads').update({
+        company_name: lead.company_name,
+        prospect_name: lead.prospect_name,
+        intake_data: lead.intake_data,
+        ...(lead.met_at_event ? { met_at_event: lead.met_at_event } : {}),
+      }).eq('id', leadId)
+    } else {
+      const { data: newLead, error: insertError } = await snacketOs
+        .from('leads')
+        .insert(lead)
+        .select('id')
+        .single()
+      if (insertError) {
+        console.error('[guides-request] lead insert FAILED:', insertError.message)
+      } else {
+        leadId = newLead.id
+      }
+    }
+  } catch (err) {
+    console.error('[guides-request] lead bridge FAILED:', err.message)
+  }
+
+  // Awaited — the landing's confirmation pop-up promises the PDF is on its way, so a
+  // real send failure must surface as an error, never a false success.
+  try {
+    await axios.post('https://flowait.app.n8n.cloud/webhook/guide-request',
+      buildWebhookPayload(value, leadId), { timeout: 15000 })
+  } catch (err) {
+    console.error('[guides-request] email send FAILED:', err.message)
+    axios.post('https://flowait.app.n8n.cloud/webhook/clt-alliance-failure-alert', {
+      name: value.name, email: value.email,
+      error_message: `[guides-request:${value.audience}] ${err.message}`.slice(0, 2000),
+      lead_id: leadId, occurred_at: new Date().toISOString(),
+    }, { timeout: 10000 }).catch(alertErr => {
+      console.error('[guides-request] failure alert FAILED:', alertErr.message)
+    })
     return res.status(500).json({ ok: false, error: 'Could not send your guide — please try again.' })
   }
 
