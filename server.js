@@ -114,7 +114,20 @@ app.post('/thumbnail', async (req, res) => {
   }
 })
 
+// Legacy v1 pipeline (src/ev-scene.js). No known callers left: Stage A's n8n node moved to
+// /generate-ev-scene-simple on 2026-08-13 and Pitch Elevator uses -v2; a 2026-09-29 sweep of
+// all 105 n8n workflows + every repo found zero references. It still makes a paid Gemini
+// call, though, and until now had NO auth — anyone who found the URL could burn credits.
+// Same X-Render-Secret gate as the v3 routes below (safeCompare is a hoisted declaration).
 app.post('/generate-ev-scene', async (req, res) => {
+  if (!process.env.RENDER_SECRET) {
+    console.error('[ev-scene] RENDER_SECRET env var not set — refusing all requests')
+    return res.status(500).json({ ok: false, error: 'internal error' })
+  }
+  if (!safeCompare(req.headers['x-render-secret'], process.env.RENDER_SECRET)) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' })
+  }
+
   const { prospect_id, logo_url, company_name, activation_description, brand_concept } = req.body
   if (!prospect_id || !company_name) {
     return res.status(400).json({ ok: false, error: 'prospect_id and company_name required' })
