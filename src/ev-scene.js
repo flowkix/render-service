@@ -1,6 +1,7 @@
 'use strict'
 const sharp = require('sharp')
 const axios = require('axios')
+const { recordImageUsage } = require('./ai-credits/usage-recorder')
 
 // SNACKET EV reference photo — white background, 1024×768px
 // Rear 3/4 view, slightly elevated, both gull-wing doors open
@@ -176,6 +177,9 @@ async function generateEvScene({ prospectId, logoUrl, companyName, activationDes
 
   const geminiResp = await callGemini(parts, 'scene+branding')
   const finalBuffer = extractImageBuffer(geminiResp, 'scene+branding')
+  // AI Credits ítem 9: only a response that actually contained an image is billable.
+  // Legacy v1 always uses gemini-2.5-flash-image at its only size.
+  recordImageUsage({ stage: 'legacy-scene', model: 'gemini-2.5-flash-image', resolution: '1K' })
   console.log(`[ev-scene] gemini done in ${((Date.now() - t0) / 1000).toFixed(1)}s`)
 
   // 4. Upload to SNACKET-OS Supabase Storage
