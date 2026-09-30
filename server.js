@@ -16,6 +16,7 @@ const { generateDeckPdf } = require('./src/deck-pdf')
 const { generateCarouselSlide, generateOverlaySlide } = require('./src/slide-gen')
 const { uploadImage } = require('./src/supabase')
 const { runBranding, runFull, runSimpleFull, runDecorReference } = require('./src/ev-engine')
+const { meterGeneration, InsufficientCreditsError } = require('./src/ai-credits/metering')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
 const { isAllowedGuidesOrigin, validateGuideRequest, buildLeadRecord, buildWebhookPayload } = require('./src/guides/guide-request')
@@ -135,13 +136,13 @@ app.post('/generate-ev-scene', async (req, res) => {
   }
   try {
     console.log(`[ev-scene] start — ${prospect_id} / ${company_name}`)
-    const result = await generateEvScene({
+    const result = await meterGeneration({ source: 'legacy-ev-scene' }, () => generateEvScene({
       prospectId: prospect_id,
       logoUrl: logo_url || '',
       companyName: company_name,
       activationDescription: activation_description || 'a brand activation event',
       brandConcept: brand_concept || 'Brand Activation',
-    })
+    }))
     console.log(`[ev-scene] done — ${result.ev_image_url}`)
     res.json({ ok: true, ...result })
   } catch (err) {
@@ -1019,11 +1020,11 @@ app.post('/generate-ev-scene-public', async (req, res) => {
       throw new Error('logo_source must be a data: URL or an http(s) URL')
     }
 
-    const { buffer } = await runBranding({
+    const { buffer } = await meterGeneration({ source: 'clt-alliance-public' }, () => runBranding({
       companyName: company,
       logoSource: logoBuffer,
       zones: 'all',
-    })
+    }))
 
     // Gemini's returned buffer isn't guaranteed to actually be PNG-encoded (it can come
     // back as JPEG bytes) — normalize to real PNG before upload, matching ev-scene.js's
@@ -1163,7 +1164,7 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
     const brandingOverride =
       source === 'pitch-elevator' ? { provider: 'gemini', model: 'gemini-3.1-flash-image' } : undefined
 
-    const { scene } = await runFull({
+    const { scene } = await meterGeneration({ source }, () => runFull({
       companyName: company_name,
       logoSource: logoBuffer,
       theme,
@@ -1171,13 +1172,14 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
       tableCount: table_count,
       ledPosterContent: led_poster_content,
       brandingOverride,
-    })
+    }))
     fs.writeFileSync(tmpPath, scene.buffer)
     const storagePath = `scene-v2/${source}/${randomUUID()}.png`
     const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
     console.log(`[scene-v2] done — ${source} / ${imageUrl}`)
     res.json({ ok: true, image_url: imageUrl })
   } catch (err) {
+    if (err instanceof InsufficientCreditsError) return res.status(402).json({ ok: false, error: 'insufficient_credits' })
     console.error(`[scene-v2] FAILED — ${source}:`, err.message)
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
@@ -1251,7 +1253,7 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
     // caller unaffected. See src/ev-engine/index.js's runSimpleFull skipBranding branch.
     const skipBranding = source === 'business-card-capture'
 
-    const { scene } = await runSimpleFull({
+    const { scene } = await meterGeneration({ source }, () => runSimpleFull({
       companyName: company_name,
       logoSource: logoBuffer,
       theme,
@@ -1259,13 +1261,14 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
       currentSceneBuffer,
       editInstruction: edit_instruction,
       skipBranding,
-    })
+    }))
     fs.writeFileSync(tmpPath, scene.buffer)
     const storagePath = `scene-simple/${source}/${randomUUID()}.png`
     const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
     console.log(`[scene-simple] done — ${source} / ${imageUrl}`)
     res.json({ ok: true, image_url: imageUrl })
   } catch (err) {
+    if (err instanceof InsufficientCreditsError) return res.status(402).json({ ok: false, error: 'insufficient_credits' })
     console.error(`[scene-simple] FAILED — ${source}:`, err.message)
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
@@ -1319,11 +1322,11 @@ app.post('/generate-ev-branding', async (req, res) => {
       throw new Error('logo_source must be a data: URL or an http(s) URL')
     }
 
-    const { buffer } = await runBranding({
+    const { buffer } = await meterGeneration({ source }, () => runBranding({
       companyName: company_name,
       logoSource: logoBuffer,
       zones: 'all',
-    })
+    }))
 
     // Gemini's returned buffer isn't guaranteed to actually be PNG-encoded — normalize
     // before upload, same as /generate-ev-scene-public does for this same underlying
@@ -1335,6 +1338,7 @@ app.post('/generate-ev-branding', async (req, res) => {
     console.log(`[branding] done — ${source} / ${imageUrl}`)
     res.json({ ok: true, image_url: imageUrl })
   } catch (err) {
+    if (err instanceof InsufficientCreditsError) return res.status(402).json({ ok: false, error: 'insufficient_credits' })
     console.error(`[branding] FAILED — ${source}:`, err.message)
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
@@ -1397,7 +1401,7 @@ app.post('/generate-ev-decor-reference', async (req, res) => {
     const objectBuffer = await resolveImageSource(object_source, 'object_source')
     const decorBuffer = await resolveImageSource(decor_source, 'decor_source')
 
-    const { buffer } = await runDecorReference({
+    const { buffer } = await meterGeneration({ source }, () => runDecorReference({
       objectBuffer,
       objectSourceHint: String(object_source),
       decorBuffer,
@@ -1405,13 +1409,14 @@ app.post('/generate-ev-decor-reference', async (req, res) => {
       objectLabel: object_label,
       placementInstructions: placement_instructions,
       scaleInstruction: scale_instruction,
-    })
+    }))
     fs.writeFileSync(tmpPath, buffer)
     const storagePath = `decor-reference/${source}/${randomUUID()}.png`
     const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
     console.log(`[decor-reference] done — ${source} / ${imageUrl}`)
     res.json({ ok: true, image_url: imageUrl })
   } catch (err) {
+    if (err instanceof InsufficientCreditsError) return res.status(402).json({ ok: false, error: 'insufficient_credits' })
     console.error(`[decor-reference] FAILED — ${source}:`, err.message)
     res.status(500).json({ ok: false, error: 'Generation failed — our team has been notified.' })
   } finally {
