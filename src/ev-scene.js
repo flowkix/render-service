@@ -1,6 +1,7 @@
 'use strict'
 const sharp = require('sharp')
 const axios = require('axios')
+const { recordImageUsage } = require('./ai-credits/usage-recorder')
 
 // SNACKET EV reference photo — white background, 1024×768px
 // Rear 3/4 view, slightly elevated, both gull-wing doors open
@@ -75,6 +76,8 @@ async function callGemini(parts, label) {
     { headers: { 'Content-Type': 'application/json' }, timeout: 180000 }
   )
   console.log(`[ev-scene] ${label} done in ${((Date.now() - t0) / 1000).toFixed(1)}s`)
+  // AI Credits ítem 9: legacy v1 always uses gemini-2.5-flash-image at its only size.
+  recordImageUsage({ stage: `legacy-${label}`, model: 'gemini-2.5-flash-image', resolution: '1K' })
   return resp.data
 }
 

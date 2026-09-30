@@ -2,6 +2,7 @@
 const axios = require('axios')
 const { Provider, priceFor } = require('./provider')
 const { assertPayloadWithinLimit } = require('../assets')
+const { recordImageUsage } = require('../../ai-credits/usage-recorder')
 
 // Gemini's image models return a plain 503 when the model is momentarily overloaded
 // (observed live 2026-07-23 — 2 of 4 real requests hit this in a row) with no
@@ -66,6 +67,9 @@ class GeminiProvider extends Provider {
     const latencyMs = Date.now() - t0
 
     const buffer = extractImageBuffer(resp.data, opts.label || model)
+    // AI Credits ítem 9: only a call that actually returned an image is billable
+    // usage. No imageSize sent → Gemini's default 1K output.
+    recordImageUsage({ stage: opts.label || 'image', model, resolution: opts.resolution || '1K' })
     return {
       buffer,
       meta: {
