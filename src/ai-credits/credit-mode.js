@@ -27,7 +27,7 @@ const KNOWN_BEST_EFFORT = new Set([
 function creditModeFor(source) {
   if (BLOCKING_SOURCES.has(source)) return 'block'
   if (!KNOWN_BEST_EFFORT.has(source)) {
-    console.warn(`[credit-mode] unknown source "${source}" — treating as best-effort`)
+    console.warn(`[credit-mode] unknown source ${JSON.stringify(String(source)).slice(0, 80)} — treating as best-effort`)
   }
   return 'best-effort'
 }
