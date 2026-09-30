@@ -135,6 +135,22 @@ test('outbox insert fails: sends the full row as fallback, generation still succ
   assert.strictEqual(http.calls[0].body.fallback.stages.length, 1)
 })
 
+test('source longer than 64 chars is capped for both the direct insert and the fallback payload', async () => {
+  const longSource = 'x'.repeat(100)
+
+  const http1 = fakeHttp(); const db1 = fakeDb()
+  await meterGeneration({ source: longSource }, gen(1), { http: http1, getDb: () => db1, config: CONFIG })
+  await flush()
+  assert.strictEqual(db1.inserts[0].source.length, 64)
+  assert.strictEqual(db1.inserts[0].source, longSource.slice(0, 64))
+
+  const http2 = fakeHttp(); const db2 = fakeDb({ insertError: 'db down' })
+  await meterGeneration({ source: longSource }, gen(1), { http: http2, getDb: () => db2, config: CONFIG })
+  await flush()
+  assert.strictEqual(http2.calls[0].body.fallback.source.length, 64)
+  assert.strictEqual(http2.calls[0].body.fallback.source, longSource.slice(0, 64))
+})
+
 test('getDb throwing (env missing) is treated like an insert failure, never breaks the response', async () => {
   const http = fakeHttp()
   const out = await meterGeneration({ source: 'clt-alliance-public' }, gen(1), { http, getDb: () => { throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY required') }, config: CONFIG })

@@ -103,14 +103,21 @@ async function meterGeneration({ source }, fn, deps = {}) {
   const config = deps.config || hubConfig()
   const insertTimeoutMs = deps.insertTimeoutMs || OUTBOX_INSERT_TIMEOUT_MS
 
-  if (creditModeFor(source) === 'block') {
-    const pre = await precheck(source, { http, config })
+  // HUB validates `source` at <=64 chars on its fallback path (render-charge body),
+  // but the direct outbox insert has no such constraint — without capping here, a
+  // long caller-supplied source would bill fine via a direct insert but be rejected
+  // (charge lost) the one time it has to go through the fallback. Normalized once so
+  // creditModeFor, precheck and the outbox row all see the exact same value.
+  const billingSource = String(source ?? 'unknown').slice(0, 64)
+
+  if (creditModeFor(billingSource) === 'block') {
+    const pre = await precheck(billingSource, { http, config })
     if (pre && pre.allowed === false) throw new InsufficientCreditsError()
   }
 
   const { result, error, stages } = await runWithUsageRecorder(fn)
   if (stages.length > 0) {
-    await persistUsage({ source, stages, requestStatus: error ? 'failed_partial' : 'succeeded' }, { getDb, http, config, insertTimeoutMs })
+    await persistUsage({ source: billingSource, stages, requestStatus: error ? 'failed_partial' : 'succeeded' }, { getDb, http, config, insertTimeoutMs })
   }
   if (error) throw error
   return result
