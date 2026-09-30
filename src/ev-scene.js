@@ -76,8 +76,6 @@ async function callGemini(parts, label) {
     { headers: { 'Content-Type': 'application/json' }, timeout: 180000 }
   )
   console.log(`[ev-scene] ${label} done in ${((Date.now() - t0) / 1000).toFixed(1)}s`)
-  // AI Credits ítem 9: legacy v1 always uses gemini-2.5-flash-image at its only size.
-  recordImageUsage({ stage: `legacy-${label}`, model: 'gemini-2.5-flash-image', resolution: '1K' })
   return resp.data
 }
 
@@ -179,6 +177,9 @@ async function generateEvScene({ prospectId, logoUrl, companyName, activationDes
 
   const geminiResp = await callGemini(parts, 'scene+branding')
   const finalBuffer = extractImageBuffer(geminiResp, 'scene+branding')
+  // AI Credits ítem 9: only a response that actually contained an image is billable.
+  // Legacy v1 always uses gemini-2.5-flash-image at its only size.
+  recordImageUsage({ stage: 'legacy-scene', model: 'gemini-2.5-flash-image', resolution: '1K' })
   console.log(`[ev-scene] gemini done in ${((Date.now() - t0) / 1000).toFixed(1)}s`)
 
   // 4. Upload to SNACKET-OS Supabase Storage
