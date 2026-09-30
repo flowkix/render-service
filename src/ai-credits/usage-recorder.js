@@ -8,6 +8,9 @@ const { AsyncLocalStorage } = require('async_hooks')
 // threading a collector through every pipeline stage.
 const storage = new AsyncLocalStorage()
 
+const VALID_RESOLUTIONS = ['0.5K', '1K', '2K', '4K']
+const MAX_STAGE_LENGTH = 64
+
 async function runWithUsageRecorder(fn) {
   const store = { stages: [] }
   try {
@@ -21,7 +24,14 @@ async function runWithUsageRecorder(fn) {
 function recordImageUsage({ stage, model, resolution }) {
   const store = storage.getStore()
   if (!store) return
-  store.stages.push({ stage, model, resolution: String(resolution).toUpperCase(), images: 1 })
+  const normalizedResolution = String(resolution).toUpperCase()
+  if (!VALID_RESOLUTIONS.includes(normalizedResolution)) {
+    // One malformed stage must not make HUB reject the whole billing row — drop
+    // just this stage and keep the rest of the request's usage intact.
+    console.error('[usage-recorder] invalid resolution — stage NOT recorded', JSON.stringify({ stage, model, resolution }))
+    return
+  }
+  store.stages.push({ stage: String(stage).slice(0, MAX_STAGE_LENGTH), model, resolution: normalizedResolution, images: 1 })
 }
 
 module.exports = { runWithUsageRecorder, recordImageUsage }
