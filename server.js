@@ -136,6 +136,7 @@ app.post('/generate-ev-scene', async (req, res) => {
   }
   try {
     console.log(`[ev-scene] start — ${prospect_id} / ${company_name}`)
+    // best-effort source (credit-mode.js) — never throws InsufficientCreditsError; add a 402 branch if it ever becomes blocking
     const result = await meterGeneration({ source: 'legacy-ev-scene' }, () => generateEvScene({
       prospectId: prospect_id,
       logoUrl: logo_url || '',
@@ -1020,6 +1021,7 @@ app.post('/generate-ev-scene-public', async (req, res) => {
       throw new Error('logo_source must be a data: URL or an http(s) URL')
     }
 
+    // best-effort source (credit-mode.js) — never throws InsufficientCreditsError; add a 402 branch if it ever becomes blocking
     const { buffer } = await meterGeneration({ source: 'clt-alliance-public' }, () => runBranding({
       companyName: company,
       logoSource: logoBuffer,

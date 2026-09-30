@@ -168,7 +168,7 @@ test('blocking source with precheck allowed: correct precheck call, then insert 
   assert.strictEqual(http.calls[0].url, 'https://hub.test/api/internal/ai-credits/render-precheck')
   assert.deepStrictEqual(http.calls[0].body, { source: 'pitch-elevator' })
   assert.strictEqual(http.calls[0].opts.headers['x-render-ai-credits-secret'], 's3cret')
-  assert.strictEqual(http.calls[0].opts.timeout, 5000)
+  assert.strictEqual(http.calls[0].opts.timeout, 3000)
   assert.strictEqual(db.inserts.length, 1)
   assert.strictEqual(http.calls.length, 2)
   assert.strictEqual(http.calls[1].url, 'https://hub.test/api/internal/ai-credits/render-charge')

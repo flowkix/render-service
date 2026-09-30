@@ -17,6 +17,9 @@ class FalKontextProvider extends Provider {
   }
 
   async generate({ images, prompt, opts = {} }) {
+    // AI Credits: NOT metered — no recordImageUsage() here and HUB has no price for
+    // this model. Bench-only today; before making it a production stage provider,
+    // add the hook + a HUB price (see src/ai-credits/usage-recorder.js).
     const timeoutMs = opts.timeoutMs || 180000
     const t0 = Date.now()
     const dataUris = images.map(i => `data:${i.mimeType};base64,${i.buffer.toString('base64')}`)

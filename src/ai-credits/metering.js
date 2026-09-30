@@ -20,6 +20,11 @@ class InsufficientCreditsError extends Error {
   }
 }
 
+// Precheck fails open on any error (see precheck() below), so waiting longer than
+// necessary for it buys nothing — it only eats into the calling HUB tool's own abort
+// window. The kick keeps the longer timeout: it's fire-and-forget and HUB's cron
+// retries anything it misses, so there's no caller-facing budget being spent.
+const PRECHECK_TIMEOUT_MS = 3000
 const HUB_TIMEOUT_MS = 5000
 const OUTBOX_INSERT_TIMEOUT_MS = 5000
 
@@ -37,7 +42,7 @@ async function precheck(source, { http, config }) {
     return null
   }
   try {
-    const resp = await http.post(`${config.baseUrl}/api/internal/ai-credits/render-precheck`, { source }, { headers: hubHeaders(config), timeout: HUB_TIMEOUT_MS })
+    const resp = await http.post(`${config.baseUrl}/api/internal/ai-credits/render-precheck`, { source }, { headers: hubHeaders(config), timeout: PRECHECK_TIMEOUT_MS })
     return resp.data
   } catch (err) {
     // Sanitized the same way credit-mode logs an unknown source — keeps an
