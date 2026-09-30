@@ -19,16 +19,49 @@ function fakeHttp(handlers = {}) {
   }
 }
 
-function fakeDb({ insertError = null } = {}) {
+// Mirrors the real @supabase/postgrest-js builder shape: `.single()` returns a
+// thenable that also exposes `.abortSignal()` (which returns the same
+// thenable) rather than a plain Promise — production code chains
+// `.single().abortSignal(...)`, so the fake must support that chain.
+// `hang: true` makes the thenable never settle on its own, only rejecting
+// once the abort signal fires — used to test the insert timeout.
+function fakeDb({ insertError = null, hang = false } = {}) {
   const inserts = []
   return {
     inserts,
     from: () => ({
       insert: (row) => ({
         select: () => ({
-          single: async () => {
-            inserts.push(row)
-            return insertError ? { data: null, error: { message: insertError } } : { data: { id: 'outbox-1' }, error: null }
+          single: () => {
+            let signal = null
+            let settled = false
+            const builder = {
+              abortSignal(s) {
+                signal = s
+                return builder
+              },
+              then(resolve, reject) {
+                if (hang) {
+                  const rejectOnAbort = () => {
+                    if (settled) return
+                    settled = true
+                    reject(new Error('This operation was aborted'))
+                  }
+                  if (signal) {
+                    if (signal.aborted) return rejectOnAbort()
+                    signal.addEventListener('abort', rejectOnAbort)
+                  }
+                  return
+                }
+                inserts.push(row)
+                settled = true
+                resolve(insertError ? { data: null, error: { message: insertError } } : { data: { id: 'outbox-1' }, error: null })
+              },
+              catch(onRejected) {
+                return builder.then(undefined, onRejected)
+              },
+            }
+            return builder
           },
         }),
       }),
@@ -124,4 +157,66 @@ test('missing HUB config: skips precheck and kick but still writes the outbox ro
   assert.strictEqual(out, 'image')
   assert.strictEqual(http.calls.length, 0)
   assert.strictEqual(db.inserts.length, 1)
+})
+
+test('blocking source with precheck allowed: correct precheck call, then insert + charge kick in order', async () => {
+  const http = fakeHttp({ '/api/internal/ai-credits/render-precheck': { allowed: true, balanceCredits: 100 } })
+  const db = fakeDb()
+  const out = await meterGeneration({ source: 'pitch-elevator' }, gen(1), { http, getDb: () => db, config: CONFIG })
+  await flush()
+  assert.strictEqual(out, 'image')
+  assert.strictEqual(http.calls[0].url, 'https://hub.test/api/internal/ai-credits/render-precheck')
+  assert.deepStrictEqual(http.calls[0].body, { source: 'pitch-elevator' })
+  assert.strictEqual(http.calls[0].opts.headers['x-render-ai-credits-secret'], 's3cret')
+  assert.strictEqual(http.calls[0].opts.timeout, 5000)
+  assert.strictEqual(db.inserts.length, 1)
+  assert.strictEqual(http.calls.length, 2)
+  assert.strictEqual(http.calls[1].url, 'https://hub.test/api/internal/ai-credits/render-charge')
+})
+
+test('fallback carries the same idempotency_key as the attempted insert row', async () => {
+  const http = fakeHttp(); const db = fakeDb({ insertError: 'db down' })
+  await meterGeneration({ source: 'clt-alliance-public' }, gen(1), { http, getDb: () => db, config: CONFIG })
+  await flush()
+  assert.strictEqual(db.inserts.length, 1)
+  assert.strictEqual(http.calls[0].body.fallback.idempotency_key, db.inserts[0].idempotency_key)
+})
+
+test('insert timeout: falls back within the timeout and generation still returns the image', async () => {
+  const http = fakeHttp(); const db = fakeDb({ hang: true })
+  const out = await meterGeneration({ source: 'clt-alliance-public' }, gen(1), { http, getDb: () => db, config: CONFIG, insertTimeoutMs: 20 })
+  await flush()
+  assert.strictEqual(out, 'image')
+  assert.strictEqual(db.inserts.length, 0)
+  assert.strictEqual(http.calls.length, 1)
+  assert.ok(http.calls[0].body.fallback)
+})
+
+test('insert failure with missing HUB config logs CHARGE LOST', async (t) => {
+  const errorSpy = t.mock.method(console, 'error')
+  const http = fakeHttp(); const db = fakeDb({ insertError: 'db down' })
+  const out = await meterGeneration({ source: 'clt-alliance-public' }, gen(1), { http, getDb: () => db, config: { baseUrl: undefined, secret: undefined } })
+  await flush()
+  assert.strictEqual(out, 'image')
+  const messages = errorSpy.mock.calls.map(c => c.arguments[0])
+  assert.ok(messages.some(m => typeof m === 'string' && m.startsWith('[ai-credits] CHARGE LOST')))
+})
+
+test('fallback kick rejects logs CHARGE LOST — fallback kick failed', async (t) => {
+  const errorSpy = t.mock.method(console, 'error')
+  const http = fakeHttp({ '/api/internal/ai-credits/render-charge': new Error('timeout') })
+  const db = fakeDb({ insertError: 'db down' })
+  const out = await meterGeneration({ source: 'clt-alliance-public' }, gen(1), { http, getDb: () => db, config: CONFIG })
+  await flush()
+  assert.strictEqual(out, 'image')
+  const messages = errorSpy.mock.calls.map(c => c.arguments[0])
+  assert.ok(messages.some(m => typeof m === 'string' && m.startsWith('[ai-credits] CHARGE LOST — fallback kick failed')))
+})
+
+test('kick: http.post throwing synchronously does not break the response', async () => {
+  const syncThrowHttp = { calls: [], post: () => { throw new Error('sync boom') } }
+  const db = fakeDb()
+  const out = await meterGeneration({ source: 'business-card-capture' }, gen(1), { http: syncThrowHttp, getDb: () => db, config: CONFIG })
+  await flush()
+  assert.strictEqual(out, 'image')
 })
