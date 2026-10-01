@@ -37,6 +37,9 @@ async function runSimpleSceneStage({
   currentSceneBuffer,
   editInstruction,
   rawEvReferenceUrl,
+  // 2026-09-30: set by the fidelity gate on retries (pipeline/fidelity-gate.js) — prepended
+  // verbatim to the prompt. Empty/undefined = byte-identical prompt to before the gate existed.
+  correctivePrefix = '',
 }) {
   const stageCfg = engineConfig.stages.scene
   const providerName = providerOverride?.provider || stageCfg.provider
@@ -51,7 +54,7 @@ async function runSimpleSceneStage({
   // even runs.
   const rawEvReferenceBuffer = rawEvReferenceUrl ? await fetchBuffer(rawEvReferenceUrl) : null
 
-  const { prompt, aspectRatio } = isEditMode
+  const { prompt: basePrompt, aspectRatio } = isEditMode
     ? { ...buildSimpleSceneEditPrompt({ editInstruction, simpleCorrectionsConfig }), aspectRatio: EDIT_MODE_ASPECT_RATIO }
     : buildSimpleScenePrompt({
         theme,
@@ -63,6 +66,7 @@ async function runSimpleSceneStage({
         simpleCorrectionsConfig,
         includeRawReference: !!rawEvReferenceBuffer,
       })
+  const prompt = correctivePrefix ? `${correctivePrefix}\n\n${basePrompt}` : basePrompt
 
   // ORDER IS THE CONTRACT. The provider sends `[{text: prompt}, ...images]` with no label
   // per image, so Gemini maps "IMAGE A/B/C" to the inline images purely by position. Each

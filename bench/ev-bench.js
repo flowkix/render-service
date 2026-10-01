@@ -6,7 +6,9 @@
  *   node bench/ev-bench.js estimate --matrix default
  *   node bench/ev-bench.js run --matrix smoke
  *   node bench/ev-bench.js run --matrix default [--stage branding|scene] [--filter logo=apex-wordmark,preset=P2]
- *                              [--concurrency 3] [--resume <runId>] [--no-score]
+ *                              [--concurrency 3] [--resume <runId>] [--no-score] [--gate]
+ *   --gate: simple-scene cases go through runSimpleFull + the fidelity gate (judge/retry),
+ *           i.e. the production path; record.qa holds the gate verdict per case.
  *   node bench/ev-bench.js score --run <runId>
  *   node bench/ev-bench.js compare <runIdA> <runIdB>
  */
@@ -14,7 +16,7 @@ const path = require('path')
 const fs = require('fs')
 const { loadBenchEnv } = require('./env')
 loadBenchEnv()
-const { loadEngineConfig, BrandedEvCache } = require('../src/ev-engine')
+const { loadEngineConfig, BrandedEvCache, runSimpleFull } = require('../src/ev-engine')
 const { runBrandingStage } = require('../src/ev-engine/pipeline/branding-stage')
 const { runSceneStage } = require('../src/ev-engine/pipeline/scene-stage')
 const { runSimpleSceneStage } = require('../src/ev-engine/pipeline/simple-scene-stage')
@@ -32,6 +34,7 @@ function parseArgs(argv) {
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i]
     if (a === '--no-score') args.noScore = true
+    else if (a === '--gate') args.gate = true
     else if (a.startsWith('--')) args[a.slice(2).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = rest[++i]
     else args.positional.push(a)
   }
@@ -154,6 +157,22 @@ async function cmdRun(args) {
           providerOverride: c.candidate,
           ...configs,
         }))
+      } else if (c.stage === 'simple-scene' && args.gate) {
+        // --gate: run the PRODUCTION entry point (runSimpleFull with the fidelity gate from
+        // engine.config.json) instead of the bare stage, so the bench measures what a live
+        // caller gets after judge+retry. Branding prerequisites still come from the shared
+        // cache on attempt 1; retries regenerate branding exactly like production does.
+        const full = await runSimpleFull({
+          companyName: c.logo.companyName,
+          logoSource: c.logo.absPath,
+          theme: c.theme,
+          venue: c.venue,
+          sceneOverride: c.candidate,
+          cache,
+        }, configs)
+        record.brandedCacheKey = full.branding?.cacheKey || null
+        record.qa = full.qa || null
+        ;({ buffer, meta } = full.scene)
       } else if (c.stage === 'simple-scene') {
         const branded = await ensureBrandedEv({ logo: c.logo, configs, cache, brandedMetaByLogo })
         record.brandedCacheKey = branded.cacheKey

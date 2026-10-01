@@ -24,13 +24,16 @@ async function runSceneStage({
   presetsConfig,
   correctionsConfig,
   providerOverride,
+  // 2026-09-30: set by the fidelity gate on retries (pipeline/fidelity-gate.js) — prepended
+  // verbatim to the prompt. Empty/undefined = byte-identical prompt to before the gate existed.
+  correctivePrefix = '',
 }) {
   const stageCfg = engineConfig.stages.scene
   const providerName = providerOverride?.provider || stageCfg.provider
   const model = providerOverride?.model || stageCfg.model
 
   const logoBuffer = await fetchBuffer(logoSource)
-  const { prompt, aspectRatio } = buildScenePrompt({
+  const { prompt: basePrompt, aspectRatio } = buildScenePrompt({
     theme,
     venue,
     tableCount,
@@ -40,6 +43,7 @@ async function runSceneStage({
     presetsConfig,
     correctionsConfig,
   })
+  const prompt = correctivePrefix ? `${correctivePrefix}\n\n${basePrompt}` : basePrompt
 
   const provider = getProvider(providerName)
   const { buffer, meta } = await provider.generate({

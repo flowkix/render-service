@@ -8,6 +8,15 @@ const { runSceneStage } = require('./pipeline/scene-stage')
 const { runSimpleSceneStage } = require('./pipeline/simple-scene-stage')
 const { runDecorReferenceStage } = require('./pipeline/decor-reference-stage')
 const { BrandedEvCache } = require('./pipeline/cache')
+// Required as a module object (not destructured) so tests can mock judgeEvFidelity.
+const fidelityGate = require('./pipeline/fidelity-gate')
+
+// Judge wired to the engine's own fixed raw EV reference — the single ground truth every
+// stage already starts from. Fetched once per gated request, not once per attempt.
+async function makeJudge(configs, label) {
+  const rawRefBuffer = await fetchBuffer(configs.zonesConfig.referenceImage)
+  return buffer => fidelityGate.judgeEvFidelity({ imageBuffer: buffer, rawRefBuffer, engineConfig: configs.engineConfig, label })
+}
 
 // `vehicle` is optional — every pre-existing caller omits it and keeps getting the
 // original NitroCafé zones config via engineConfig.zonesVersion, unchanged.
@@ -53,21 +62,38 @@ async function runDecorReference(opts, configs = loadEngineConfig()) {
   return runDecorReferenceStage({ ...opts, ...configs })
 }
 
+// 2026-09-30: both full pipelines run inside the EV fidelity gate (pipeline/fidelity-gate.js)
+// — generate, judge the scene against the raw EV reference, regenerate with a corrective
+// prefix on failure, deliver the best attempt flagged if none passes. `fidelityGate` defaults
+// to engine.config.json's block so every live route is gated by config; the bench and tests
+// pass their own ({enabled:false} keeps the exact pre-gate single-shot behavior).
 async function runFull(
-  { companyName, logoSource, zones = 'all', theme, venue, tableCount, ledPosterContent, params = {}, brandingOverride, sceneOverride, cache = null, vehicle },
+  {
+    companyName, logoSource, zones = 'all', theme, venue, tableCount, ledPosterContent, params = {},
+    brandingOverride, sceneOverride, cache = null, vehicle, fidelityGate: gateConfig,
+  },
   configs = loadEngineConfig(vehicle)
 ) {
-  const branding = await runBrandingStage({
-    companyName, logoSource, zones,
-    providerOverride: brandingOverride, cache,
-    ...configs,
-  })
-  const scene = await runSceneStage({
-    companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, tableCount, ledPosterContent, params,
-    providerOverride: sceneOverride,
-    ...configs,
-  })
-  return { branding, scene }
+  gateConfig = gateConfig || configs.engineConfig.fidelityGate
+  const label = `scene:${companyName}`
+  const generate = async (_attempt, { correctivePrefix }) => {
+    // A retry regenerates the branding stage too: it is a Gemini pass that can drift the
+    // vehicle before the scene stage ever runs (root-caused 2026-08-17).
+    const branding = await runBrandingStage({
+      companyName, logoSource, zones,
+      providerOverride: brandingOverride, cache: correctivePrefix ? null : cache,
+      ...configs,
+    })
+    const scene = await runSceneStage({
+      companyName, brandedEvBuffer: branding.buffer, logoSource, theme, venue, tableCount, ledPosterContent, params,
+      providerOverride: sceneOverride, correctivePrefix,
+      ...configs,
+    })
+    return { branding, scene }
+  }
+  if (gateConfig?.enabled === false) return generate(1, { correctivePrefix: '' })
+  const judge = await makeJudge(configs, label)
+  return fidelityGate.withFidelityGate({ gateConfig, generate, judge, label })
 }
 
 async function runSimpleFull(
@@ -78,8 +104,37 @@ async function runSimpleFull(
     currentSceneBuffer, editInstruction,
     // 2026-09-24 — Business Card Capture bug fix (see the skipBranding branch below).
     skipBranding = false,
+    // 2026-09-30 — see runFull. Defaults to engine.config.json's fidelityGate block.
+    fidelityGate: gateConfig,
   },
   configs = loadEngineConfig(vehicle)
+) {
+  gateConfig = gateConfig || configs.engineConfig.fidelityGate
+  const label = `simple-scene:${companyName}`
+
+  // One attempt of the pipeline. `forceCreate` (set by the gate on every retry) turns an
+  // edit-mode request into a create-mode regeneration: refining a scene whose vehicle is
+  // already wrong does not converge — confirmed live 2026-09-30 (Uwharrie Bank regen came
+  // back as the same wrong truck) — so a failed edit starts over from the raw reference.
+  const generate = async (_attempt, { correctivePrefix, forceCreate }) =>
+    runSimpleAttempt({
+      companyName, logoSource, zones, theme, venue, params, brandingOverride, sceneOverride,
+      cache: correctivePrefix ? null : cache,
+      currentSceneBuffer: forceCreate ? undefined : currentSceneBuffer,
+      editInstruction, skipBranding, correctivePrefix,
+    }, configs)
+
+  if (gateConfig?.enabled === false) return generate(1, { correctivePrefix: '', forceCreate: false })
+  const judge = await makeJudge(configs, label)
+  return fidelityGate.withFidelityGate({ gateConfig, generate, judge, label })
+}
+
+async function runSimpleAttempt(
+  {
+    companyName, logoSource, zones, theme, venue, params, brandingOverride, sceneOverride, cache,
+    currentSceneBuffer, editInstruction, skipBranding, correctivePrefix,
+  },
+  configs
 ) {
   const isEditMode = !!currentSceneBuffer
 
@@ -106,7 +161,7 @@ async function runSimpleFull(
       companyName, logoSource, theme, venue, params,
       currentSceneBuffer, editInstruction,
       rawEvReferenceUrl: configs.zonesConfig.referenceImage,
-      providerOverride: sceneOverride,
+      providerOverride: sceneOverride, correctivePrefix,
       ...configs,
     })
     return { branding: null, scene }
@@ -147,7 +202,7 @@ async function runSimpleFull(
     // anchors on (see the isEditMode branch above). Not needed when skipBranding — brandedEvBuffer
     // already IS the raw reference file, unaltered, so there's no drift to correct.
     rawEvReferenceUrl: skipBranding ? undefined : configs.zonesConfig.referenceImage,
-    providerOverride: sceneOverride,
+    providerOverride: sceneOverride, correctivePrefix,
     ...configs,
   })
   return { branding, scene }
