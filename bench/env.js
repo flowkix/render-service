@@ -18,12 +18,28 @@ function parseEnvFile(file) {
   }
 }
 
+// The FLOWKIX workspace `.secrets/` dir sits next to the render-service checkout. From a
+// git worktree (render-service/.worktrees/<branch>/bench/) a fixed "two levels up" lands
+// inside .worktrees/ and silently finds nothing (debt noted 2026-07-24), so walk up until
+// the dir actually exists — paths only, the values never enter the repo.
+function findSecretsDir(start) {
+  let dir = start
+  for (let i = 0; i < 8; i++) {
+    const candidate = path.join(dir, '.secrets')
+    if (fs.existsSync(path.join(candidate, 'google-ai.env'))) return candidate
+    const parent = path.dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  return path.join(start, '..', '..', '.secrets')
+}
+
 function loadBenchEnv() {
   const local = parseEnvFile(path.join(__dirname, '..', '.env'))
   for (const [k, v] of Object.entries(local)) {
     if (!process.env[k]) process.env[k] = v
   }
-  const secretsDir = path.join(__dirname, '..', '..', '.secrets')
+  const secretsDir = findSecretsDir(path.join(__dirname, '..'))
   if (!process.env.GEMINI_API_KEY) {
     const g = parseEnvFile(path.join(secretsDir, 'google-ai.env'))
     if (g.GOOGLE_AI_API_KEY) process.env.GEMINI_API_KEY = g.GOOGLE_AI_API_KEY

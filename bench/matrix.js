@@ -153,6 +153,21 @@ const MATRICES = {
       simpleSceneCases: SIMPLE_SCENE_TEST_CASES,
       simpleSceneCandidates: [SCENE_CANDIDATES[1]],
     }),
+
+  // Same 10 simple-scene cases but on the model PRODUCTION actually runs for the scene
+  // stage (engine.config.json stages.scene = gemini-3-pro-image; no live caller overrides
+  // it). simpleSceneValidation above measures the flash challenger — useful for a bake-off,
+  // misleading as a production baseline. Added 2026-09-30 for the EV-fidelity investigation.
+  simpleSceneProd: () =>
+    buildCases({
+      logos: fixtures.logos.map(l => l.id),
+      zoneSets: [],
+      sceneCases: [],
+      brandingCandidates: [],
+      sceneCandidates: [],
+      simpleSceneCases: SIMPLE_SCENE_TEST_CASES,
+      simpleSceneCandidates: [SCENE_CANDIDATES[0]],
+    }),
 }
 
 function getMatrix(name) {

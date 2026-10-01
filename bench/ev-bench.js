@@ -163,6 +163,10 @@ async function cmdRun(args) {
           logoSource: c.logo.absPath,
           theme: c.theme,
           venue: c.venue,
+          // 2026-09-30: mirror production (index.js runSimpleFull create mode passes the raw
+          // reference as a 3rd image since PR #37). Without it the bench measured a 2-image
+          // prompt that no live caller sends anymore.
+          rawEvReferenceUrl: configs.zonesConfig.referenceImage,
           providerOverride: c.candidate,
           ...configs,
         }))
