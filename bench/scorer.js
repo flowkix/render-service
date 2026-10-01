@@ -6,6 +6,7 @@ const fs = require('fs')
 const axios = require('axios')
 const sharp = require('sharp')
 const { fetchBuffer, sniffMime } = require('../src/ev-engine/assets')
+const { evStructureQuestion, evStructureDiscriminators } = require('../src/ev-engine/fidelity-rubric')
 
 // VLM scorers systematically miscount the three tap handles at full-image scale
 // (validated 2026-07-20: two rubric rewordings failed; a native-res crop shows all
@@ -48,9 +49,17 @@ function rubricFor(record) {
     }
     return checks
   }
+  // 2026-09-30: scene stages ask the SAME structure-only question the runtime fidelity gate
+  // enforces (src/ev-engine/fidelity-rubric.js) so bench pass rates measure what production
+  // gates on. Branding preservation moved to its own soft check.
+  // IMAGE 3 for scene stages is the RAW reference (scoreRun), the same ground truth the
+  // runtime gate uses — not the stage-1 branded EV, which can itself be the drifted vehicle
+  // (2026-10-01: a wood-grain box truck branded EV made the old scorer pass a wood-grain
+  // scene as "matches reference").
   if (record.stage === 'scene') {
     return [
-      { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
+      { id: 'ev_fidelity', q: `${evStructureQuestion('IMAGE 3')} ${evStructureDiscriminators()}` },
+      { id: 'client_branding_preserved', q: 'Does the vehicle carry the client logo (IMAGE 2) in its branded zones — nothing left showing SNACKET\'s own marks in those zones, nothing repainted or removed?' },
       { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
       { id: 'staff_guests_present', q: 'Are event guests/attendees visible somewhere in the scene near the EV activation area (staff are not shown completely isolated with zero guests anywhere in the frame)? Pose and the specific form of interaction between staff and guests do NOT matter for this check — any pose is acceptable.' },
       { id: 'operator_fixed_uniform', q: 'Is the EV Operator wearing a charcoal-and-beige polo shirt (with a logo on the chest) and khaki pants — a distinct staff/work uniform, NOT formal wear, NOT the same style of clothing as the surrounding guests?' },
@@ -69,7 +78,8 @@ function rubricFor(record) {
   }
   if (record.stage === 'simple-scene') {
     return [
-      { id: 'ev_fidelity', q: 'Is the vehicle structurally identical to the branded EV (IMAGE 3): same micro-truck body, raised gull-wing doors, wheels, cab, and same client branding — not a different vehicle?' },
+      { id: 'ev_fidelity', q: `${evStructureQuestion('IMAGE 3')} ${evStructureDiscriminators()}` },
+      { id: 'client_branding_preserved', q: 'Does the vehicle carry the client logo (IMAGE 2) in its branded zones — nothing left showing SNACKET\'s own marks in those zones, nothing repainted or removed?' },
       { id: 'staff_outside_ev', q: 'Are ALL staff members (EV Operator, Brand Ambassador) standing on the ground OUTSIDE the vehicle (nobody inside the EV, behind a service counter, or framed within the service opening)?' },
       { id: 'staff_guests_present', q: 'Is at least one other person (bystander or passerby) visible somewhere in the scene near the EV — staff are not shown completely alone with nobody else anywhere in the frame? Pose and the specific form of interaction do NOT matter for this check — any pose is acceptable.' },
       { id: 'operator_fixed_uniform', q: 'Is the EV Operator wearing a charcoal-and-beige polo shirt (with a logo on the chest) and khaki pants — a distinct staff/work uniform, NOT formal wear, NOT the same style of clothing as any bystanders?' },
@@ -185,13 +195,10 @@ async function scoreRun(runDir, configs) {
         logoBuffers.set(record.logoId, await fetchBuffer(logoById(record.logoId).absPath))
       }
       const imageBuffer = fs.readFileSync(path.join(runDir, record.imagePath))
-      // Scene cases compare against the branded EV (stage-1 output), not the raw SNACKET reference
-      let caseRef = refBuffer
-      if ((record.stage === 'scene' || record.stage === 'simple-scene') && record.brandedCacheKey) {
-        const brandedFile = path.join(runDir, 'branded-cache', `${record.brandedCacheKey}.png`)
-        if (fs.existsSync(brandedFile)) caseRef = fs.readFileSync(brandedFile)
-      }
-      const qa = await scoreImage({ apiKey, model, imageBuffer, logoBuffer: logoBuffers.get(record.logoId), refBuffer: caseRef, record })
+      // Every stage compares against the RAW SNACKET reference (2026-10-01). Scene cases used
+      // to compare against the stage-1 branded EV, which hid branding-stage drift entirely —
+      // see rubricFor. Branding fidelity of scenes is judged against the logo (IMAGE 2).
+      const qa = await scoreImage({ apiKey, model, imageBuffer, logoBuffer: logoBuffers.get(record.logoId), refBuffer, record })
       fs.writeFileSync(qaFile, JSON.stringify(qa, null, 2))
       scored++
       console.log(`  qa ${record.caseId}: ${qa.verdict} (soft ${(qa.softPassRate * 100).toFixed(0)}%, realism ${qa.photorealism})`)

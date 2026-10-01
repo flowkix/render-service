@@ -61,6 +61,23 @@ const LOGOS = {
       <text x="250" y="420" font-family="Times New Roman, serif" font-size="42" fill="#14532D" text-anchor="middle" letter-spacing="6">MERIDIAN</text>
       <text x="250" y="465" font-family="Times New Roman, serif" font-size="20" fill="#14532D" text-anchor="middle" letter-spacing="4">ANALYTICS · EST. 2018</text>
     </svg>`,
+
+  // 6 — what production actually receives when the HUB wizard auto-detects a logo
+  // (hub/src/lib/logo-finder.ts falls back to Google's favicon service at 128px): a tiny
+  // icon-only mark, no wordmark, soft edges. Added 2026-09-30 after the Uwharrie Bank
+  // Stage A deck (logo_url = .../favicons?domain=uwharrie.com&sz=128) came out as a
+  // generic box truck — the 5 clean fixtures above never reproduced that failure.
+  'favicon-lowres.png': `
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">
+      <rect width="128" height="128" fill="#FFFFFF"/>
+      <g fill="none" stroke="#1F4E9C" stroke-width="7">
+        <circle cx="64" cy="64" r="50"/>
+        <ellipse cx="64" cy="64" rx="22" ry="50"/>
+        <line x1="14" y1="64" x2="114" y2="64"/>
+        <line x1="22" y1="38" x2="106" y2="38"/>
+        <line x1="22" y1="90" x2="106" y2="90"/>
+      </g>
+    </svg>`,
 }
 
 async function main() {

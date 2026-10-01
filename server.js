@@ -1166,7 +1166,7 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
     const brandingOverride =
       source === 'pitch-elevator' ? { provider: 'gemini', model: 'gemini-3.1-flash-image' } : undefined
 
-    const { scene } = await meterGeneration({ source }, () => runFull({
+    const { scene, qa } = await meterGeneration({ source }, () => runFull({
       companyName: company_name,
       logoSource: logoBuffer,
       theme,
@@ -1178,8 +1178,10 @@ app.post('/generate-ev-scene-v2', async (req, res) => {
     fs.writeFileSync(tmpPath, scene.buffer)
     const storagePath = `scene-v2/${source}/${randomUUID()}.png`
     const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
-    console.log(`[scene-v2] done — ${source} / ${imageUrl}`)
-    res.json({ ok: true, image_url: imageUrl })
+    console.log(`[scene-v2] done — ${source} / ${imageUrl}${qa ? ` / qa ${qa.passed ? 'PASS' : 'FLAGGED'} (${qa.attempts} attempt${qa.attempts === 1 ? '' : 's'})` : ''}`)
+    // `qa` (2026-09-30, EV fidelity gate): {passed, judged, attempts, reason, score}. Callers that
+    // ignore it keep working unchanged; callers that read it can flag a passed=false image.
+    res.json({ ok: true, image_url: imageUrl, ...(qa ? { qa } : {}) })
   } catch (err) {
     if (err instanceof InsufficientCreditsError) return res.status(402).json({ ok: false, error: 'insufficient_credits' })
     console.error(`[scene-v2] FAILED — ${source}:`, err.message)
@@ -1255,7 +1257,7 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
     // caller unaffected. See src/ev-engine/index.js's runSimpleFull skipBranding branch.
     const skipBranding = source === 'business-card-capture'
 
-    const { scene } = await meterGeneration({ source }, () => runSimpleFull({
+    const { scene, qa } = await meterGeneration({ source }, () => runSimpleFull({
       companyName: company_name,
       logoSource: logoBuffer,
       theme,
@@ -1267,8 +1269,10 @@ app.post('/generate-ev-scene-simple', async (req, res) => {
     fs.writeFileSync(tmpPath, scene.buffer)
     const storagePath = `scene-simple/${source}/${randomUUID()}.png`
     const imageUrl = await uploadImage(tmpPath, 'snacket-assets', storagePath)
-    console.log(`[scene-simple] done — ${source} / ${imageUrl}`)
-    res.json({ ok: true, image_url: imageUrl })
+    console.log(`[scene-simple] done — ${source} / ${imageUrl}${qa ? ` / qa ${qa.passed ? 'PASS' : 'FLAGGED'} (${qa.attempts} attempt${qa.attempts === 1 ? '' : 's'})` : ''}`)
+    // `qa` (2026-09-30, EV fidelity gate): {passed, judged, attempts, reason, score}. Callers that
+    // ignore it keep working unchanged; callers that read it can flag a passed=false image.
+    res.json({ ok: true, image_url: imageUrl, ...(qa ? { qa } : {}) })
   } catch (err) {
     if (err instanceof InsufficientCreditsError) return res.status(402).json({ ok: false, error: 'insufficient_credits' })
     console.error(`[scene-simple] FAILED — ${source}:`, err.message)

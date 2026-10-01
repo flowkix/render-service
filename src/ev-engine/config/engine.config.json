@@ -42,6 +42,11 @@
     "model": "gemini-3-flash-preview",
     "fallbackModels": ["gemini-2.5-flash", "gemini-3.5-flash"]
   },
+  "fidelityGate": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "_doc": "Runtime EV structure check after every runFull/runSimpleFull (pipeline/fidelity-gate.js): judge with `scorer` vs the raw EV reference, regenerate up to maxAttempts-1 times with a corrective prefix, deliver best attempt flagged if none passes. Only the delivered attempt is billed. Added 2026-09-30."
+  },
   "limits": {
     "maxInlinePayloadBytes": 8000000,
     "costCapPerImageUsd": 0.25,

@@ -19,6 +19,9 @@ async function runBrandingStage({
   correctionsConfig,
   providerOverride,     // { provider, model } — bench challengers
   cache = null,         // BrandedEvCache | null
+  // 2026-10-01: set by the fidelity gate on retries (pipeline/fidelity-gate.js) — prepended
+  // verbatim to the prompt and excluded from the cache key path (a retry never hits cache).
+  correctivePrefix = '',
 }) {
   const stageCfg = engineConfig.stages.branding
   const providerName = providerOverride?.provider || stageCfg.provider
@@ -38,14 +41,15 @@ async function runBrandingStage({
     model,
   })
 
-  if (cache) {
+  if (cache && !correctivePrefix) {
     const cached = await cache.get(cacheKey)
     if (cached) {
       return { buffer: cached, cacheKey, cached: true, meta: { provider: providerName, model, fromCache: true } }
     }
   }
 
-  const prompt = buildBrandingPrompt({ companyName, zoneIds, zonesConfig, correctionsConfig })
+  const basePrompt = buildBrandingPrompt({ companyName, zoneIds, zonesConfig, correctionsConfig })
+  const prompt = correctivePrefix ? `${correctivePrefix}\n\n${basePrompt}` : basePrompt
   const provider = getProvider(providerName)
   const { buffer, meta } = await provider.generate({
     images: [

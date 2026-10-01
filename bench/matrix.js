@@ -3,6 +3,10 @@ const path = require('path')
 const fs = require('fs')
 
 const fixtures = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'logos.json'), 'utf8'))
+// The 5 clean fixtures every pre-existing matrix was built on. The 'production-realistic'
+// favicon fixture (2026-09-30) is deliberately excluded here so historical pass rates stay
+// comparable; it has its own matrix (simpleSceneFavicon).
+const CLEAN_LOGOS = fixtures.logos.filter(l => l.complexity !== 'production-realistic').map(l => l.id)
 
 const ZONE_SETS = {
   all: 'all',
@@ -121,7 +125,7 @@ const MATRICES = {
   // Full bake-off: 5 logos x (3 zone-sets x 3 branding candidates + 2 scene-cases x 2 scene candidates)
   default: () =>
     buildCases({
-      logos: fixtures.logos.map(l => l.id),
+      logos: CLEAN_LOGOS,
       zoneSets: Object.keys(ZONE_SETS),
       sceneCases: SCENE_TEST_CASES,
       brandingCandidates: BRANDING_CANDIDATES,
@@ -133,7 +137,7 @@ const MATRICES = {
   // ev-bench.js's BrandedEvCache — no explicit branding cases needed here.
   sceneV2Validation: () =>
     buildCases({
-      logos: fixtures.logos.map(l => l.id),
+      logos: CLEAN_LOGOS,
       zoneSets: [],
       sceneCases: SCENE_TEST_CASES,
       brandingCandidates: [],
@@ -145,13 +149,43 @@ const MATRICES = {
   // sceneV2Validation above, targeting the new simple-scene stage instead.
   simpleSceneValidation: () =>
     buildCases({
-      logos: fixtures.logos.map(l => l.id),
+      logos: CLEAN_LOGOS,
       zoneSets: [],
       sceneCases: [],
       brandingCandidates: [],
       sceneCandidates: [],
       simpleSceneCases: SIMPLE_SCENE_TEST_CASES,
       simpleSceneCandidates: [SCENE_CANDIDATES[1]],
+    }),
+
+  // Same 10 simple-scene cases but on the model PRODUCTION actually runs for the scene
+  // stage (engine.config.json stages.scene = gemini-3-pro-image; no live caller overrides
+  // it). simpleSceneValidation above measures the flash challenger — useful for a bake-off,
+  // misleading as a production baseline. Added 2026-09-30 for the EV-fidelity investigation.
+  simpleSceneProd: () =>
+    buildCases({
+      logos: CLEAN_LOGOS,
+      zoneSets: [],
+      sceneCases: [],
+      brandingCandidates: [],
+      sceneCandidates: [],
+      simpleSceneCases: SIMPLE_SCENE_TEST_CASES,
+      simpleSceneCandidates: [SCENE_CANDIDATES[0]],
+    }),
+
+  // Production-realistic input: the 128px icon-only favicon the HUB wizard sends when it
+  // auto-detects a logo. 1 logo x 2 venues on the production model = 2 images (+1 branding
+  // prereq, ~$0.42). Run it several times (each run is a new runId) to get a rate — this is
+  // the input class that reproduced the 2026-09-30 "generic box truck" hallucination.
+  simpleSceneFavicon: () =>
+    buildCases({
+      logos: ['favicon-lowres'],
+      zoneSets: [],
+      sceneCases: [],
+      brandingCandidates: [],
+      sceneCandidates: [],
+      simpleSceneCases: SIMPLE_SCENE_TEST_CASES,
+      simpleSceneCandidates: [SCENE_CANDIDATES[0]],
     }),
 }
 

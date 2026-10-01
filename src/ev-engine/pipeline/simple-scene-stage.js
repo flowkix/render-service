@@ -37,6 +37,9 @@ async function runSimpleSceneStage({
   currentSceneBuffer,
   editInstruction,
   rawEvReferenceUrl,
+  // 2026-09-30: set by the fidelity gate on retries (pipeline/fidelity-gate.js) — prepended
+  // verbatim to the prompt. Empty/undefined = byte-identical prompt to before the gate existed.
+  correctivePrefix = '',
 }) {
   const stageCfg = engineConfig.stages.scene
   const providerName = providerOverride?.provider || stageCfg.provider
@@ -51,7 +54,7 @@ async function runSimpleSceneStage({
   // even runs.
   const rawEvReferenceBuffer = rawEvReferenceUrl ? await fetchBuffer(rawEvReferenceUrl) : null
 
-  const { prompt, aspectRatio } = isEditMode
+  const { prompt: basePrompt, aspectRatio } = isEditMode
     ? { ...buildSimpleSceneEditPrompt({ editInstruction, simpleCorrectionsConfig }), aspectRatio: EDIT_MODE_ASPECT_RATIO }
     : buildSimpleScenePrompt({
         theme,
@@ -63,7 +66,17 @@ async function runSimpleSceneStage({
         simpleCorrectionsConfig,
         includeRawReference: !!rawEvReferenceBuffer,
       })
+  const prompt = correctivePrefix ? `${correctivePrefix}\n\n${basePrompt}` : basePrompt
 
+  // ORDER IS THE CONTRACT. The provider sends `[{text: prompt}, ...images]` with no label
+  // per image, so Gemini maps "IMAGE A/B/C" to the inline images purely by position. Each
+  // list below must match the letters its prompt assigns (see simple-scene-stage.test.js):
+  //   edit   (buildSimpleSceneEditPrompt): A = current scene, B = raw EV reference, C = logo
+  //   create (buildSimpleScenePrompt):     A = branded EV,    B = logo,             C = raw EV reference
+  // 2026-09-30 bug fix: create mode shipped as [branded, raw, logo] since PR #37 while the
+  // prompt said "IMAGE B = the logo" / "IMAGE C = the raw reference" — the structure anchor
+  // was being read as the client logo and the logo as the vehicle reference. Confirmed on a
+  // real Stage A deck (Uwharrie Bank, n8n exec 28927): generic box truck, no coffee-bean skirt.
   const images = isEditMode
     ? [
         { buffer: currentSceneBuffer, mimeType: sniffMime(currentSceneBuffer), role: 'primary' },
@@ -72,8 +85,8 @@ async function runSimpleSceneStage({
       ]
     : [
         { buffer: brandedEvBuffer, mimeType: sniffMime(brandedEvBuffer), role: 'primary' },
-        ...(rawEvReferenceBuffer ? [{ buffer: rawEvReferenceBuffer, mimeType: sniffMime(rawEvReferenceBuffer, rawEvReferenceUrl), role: 'ref' }] : []),
         { buffer: logoBuffer, mimeType: sniffMime(logoBuffer, String(logoSource)), role: 'ref' },
+        ...(rawEvReferenceBuffer ? [{ buffer: rawEvReferenceBuffer, mimeType: sniffMime(rawEvReferenceBuffer, rawEvReferenceUrl), role: 'ref' }] : []),
       ]
 
   const provider = getProvider(providerName)
