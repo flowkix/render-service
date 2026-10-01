@@ -1,7 +1,7 @@
 'use strict'
 const axios = require('axios')
 const { sniffMime } = require('../assets')
-const { evStructureQuestion } = require('../fidelity-rubric')
+const { evStructureQuestion, evStructureDiscriminators } = require('../fidelity-rubric')
 const { runIsolatedUsage, replayUsage } = require('../../ai-credits/usage-recorder')
 
 // EV fidelity gate — the runtime mechanism that stops a hallucinated vehicle from shipping.
@@ -12,31 +12,44 @@ const { runIsolatedUsage, replayUsage } = require('../../ai-credits/usage-record
 // the Gemini image API has no seed/temperature/mask knobs, so stability cannot come from the
 // prompt alone — it has to come from VERIFYING the output and regenerating when it fails.
 // Same pattern HUB's media pipeline already runs in production (hub/src/lib/media-pipeline/
-// generation-qa.ts + generate-image.ts retry loop), which caught the one structural
-// distortion in a 43-image audit. Industry name: rejection sampling with a VLM judge.
+// generation-qa.ts + generate-image.ts retry loop). Industry name: rejection sampling with a
+// VLM judge.
+//
+// Where the drift happens (measured 2026-10-01, bench simpleSceneFavicon on the pre-fix
+// code): the BRANDING stage itself redrew the EV as a wood-grain box truck (1 of 2 runs with
+// a 128px favicon logo — the real Stage A input class), and the scene stage then faithfully
+// reproduced that wrong vehicle. The judge rejects the drifted branded EV every time (clean
+// white-background comparison) but can miss the same vehicle once it is embedded in a busy
+// scene. Hence TWO gated steps: branding first (catch it at the source, cheap retry), then
+// scene (catch what the scene pass itself redraws).
 //
 // Contract:
 //   judgeEvFidelity() — asks the scorer model (engine.config.json `scorer`) one structure-
 //     only question against the raw reference photo. Fails OPEN on judge infrastructure
 //     errors (no key, network, unparseable) so a judge outage can never block generation.
-//   withFidelityGate() — generate → judge → regenerate with a corrective prefix, up to
-//     maxAttempts. Every attempt runs in an isolated usage recorder; only the DELIVERED
-//     attempt's paid stages are replayed into the request's recorder (John's decision:
-//     QA retries are not billed to the client). If nothing passes, the best-scoring attempt
-//     ships with qa.passed=false so the caller can flag it (never a hard failure — John's
-//     decision: deliver and mark).
+//   gatedStep() — generate → judge → regenerate with a corrective prefix, up to maxAttempts.
+//     Every attempt runs in an isolated usage recorder; the step returns the DELIVERED
+//     attempt's paid stages for the caller to replay (John's decision: QA retries are not
+//     billed to the client). If nothing passes, the best-scoring attempt is returned with
+//     qa.passed=false (never a hard failure — John's decision: deliver and mark).
 
 const JUDGE_TIMEOUT_MS = 90000
 const JUDGE_MAX_RETRIES = 2
 
-// Prepended to the scene prompt on every retry. Same wording family as HUB's
-// QA_CORRECTIONS.structure_mismatch (generate-image.ts), tuned for this engine's vocabulary.
-const CORRECTIVE_PREFIX =
-  'CRITICAL CORRECTION — a previous attempt rendered a DIFFERENT vehicle (generic van / box truck / wrong cab or roof / ' +
-  'missing coffee-bean skirt) instead of the real SNACKET EV. The vehicle in your output MUST be structurally identical to ' +
-  'the SNACKET EV reference image provided: compact narrow-body micro-truck, small cab with flat rectangular roof, boxy service ' +
-  'body with two raised gull-wing doors, round center disc, small wheels, coffee-bean pattern skirt along the base. Do NOT ' +
-  'invent, resize, or substitute the vehicle.'
+// Prepended to the generation prompt on every retry of a step.
+const CORRECTIVE_PREFIX = {
+  branding:
+    'CRITICAL CORRECTION — a previous attempt REDREW the vehicle (wood-grain or brown body, different cab, open flatbed side, ' +
+    'missing coffee-bean skirt) instead of only replacing the branding. This is a product RETOUCHING job: the vehicle in your ' +
+    'output must be pixel-identical to IMAGE A in every structural respect — same white body panels, same cab, same flat roof, ' +
+    'same raised gull-wing doors, same wheels, same coffee-bean pattern skirt along the base. Change ONLY the listed branding zones.',
+  scene:
+    'CRITICAL CORRECTION — a previous attempt rendered a DIFFERENT vehicle (generic van / box truck / wood-grain body / wrong cab ' +
+    'or roof / missing coffee-bean skirt) instead of the real SNACKET EV. The vehicle in your output MUST be structurally identical ' +
+    'to the SNACKET EV reference image provided: compact narrow-body micro-truck with white body panels, small cab with flat ' +
+    'rectangular roof, boxy service body with two raised gull-wing doors, round center disc, small wheels, coffee-bean pattern ' +
+    'skirt along the base only. Do NOT invent, resize, or substitute the vehicle.',
+}
 
 function parseVerdict(text) {
   const clean = String(text).replace(/^```(?:json)?\s*|\s*```$/g, '').trim()
@@ -66,6 +79,7 @@ async function judgeEvFidelity({
     'IMAGE 1 = the generated image under review. IMAGE 2 = the official reference photo of the real vehicle (ground truth).',
     '',
     `CHECK "ev_structure": ${evStructureQuestion('IMAGE 2')}`,
+    evStructureDiscriminators(),
     '',
     'Also rate "structure_match" from 1 (clearly a different vehicle) to 5 (unmistakably the same vehicle).',
     'When uncertain, answer pass=false and explain.',
@@ -100,7 +114,7 @@ async function judgeEvFidelity({
       } catch (e) {
         lastErr = e
         const status = e.response?.status
-        if (status === 503 || status === 429) { await new Promise(r => setTimeout(r, 2000 * attempt)); continue }
+        if (status === 503 || status === 429 || e.code === 'ECONNRESET') { await new Promise(r => setTimeout(r, 2000 * attempt)); continue }
         break // non-retryable for this model — try the next one
       }
     }
@@ -109,46 +123,63 @@ async function judgeEvFidelity({
 }
 
 /**
- * Generate-judge-retry loop.
+ * One gated pipeline step: generate → judge → retry with a corrective prefix.
  *
  * @param {object} p
  * @param {{enabled?:boolean, maxAttempts?:number}} p.gateConfig — engine.config.json `fidelityGate`
- * @param {(attempt:number, ctx:{correctivePrefix:string, forceCreate:boolean}) => Promise<object>} p.generate
- *        Runs one full attempt and resolves to the pipeline result; must expose the image to judge
- *        at `result.scene.buffer`. `forceCreate` is true on every retry (an edit-mode refinement
- *        of a wrong vehicle does not converge — confirmed live 2026-09-30 — so retries start over).
+ * @param {'branding'|'scene'} p.kind — picks the corrective prefix
+ * @param {(attempt:number, ctx:{correctivePrefix:string}) => Promise<{buffer:Buffer}>} p.generate
  * @param {(buffer:Buffer) => Promise<{pass:boolean, judged:boolean, score:number|null, reason:string}>} p.judge
  * @param {string} p.label — for logs only, never user text
- * @returns the delivered attempt's result with `qa` attached
+ * @returns {{ result, stages, qa }} — `stages` = the delivered attempt's paid usage, NOT yet
+ *   replayed into the request recorder (the caller replays once it knows what it ships).
+ *   `qa` = { passed, judged, attempts, reason, score }.
  */
-async function withFidelityGate({ gateConfig, generate, judge, label = 'ev' }) {
-  const enabled = gateConfig?.enabled !== false
+async function gatedStep({ gateConfig, kind, generate, judge, label = kind }) {
   const maxAttempts = Math.max(1, Number(gateConfig?.maxAttempts) || 1)
-
-  if (!enabled) {
-    return generate(1, { correctivePrefix: '', forceCreate: false })
-  }
-
+  const prefix = CORRECTIVE_PREFIX[kind] || ''
   const attempts = []
   for (let n = 1; n <= maxAttempts; n++) {
-    const ctx = { correctivePrefix: n > 1 ? CORRECTIVE_PREFIX : '', forceCreate: n > 1 }
+    const ctx = { correctivePrefix: n > 1 ? prefix : '' }
     const { result, stages } = await runIsolatedUsage(() => generate(n, ctx))
-    const verdict = await judge(result.scene.buffer)
+    const verdict = await judge(result.buffer)
     attempts.push({ result, stages, verdict, n })
     const tag = verdict.judged ? (verdict.pass ? 'PASS' : 'FAIL') : 'UNJUDGED'
     console.log(`[fidelity-gate] ${label}: attempt ${n}/${maxAttempts} ${tag}${verdict.score != null ? ` score=${verdict.score}` : ''} — ${verdict.reason}`)
-    if (verdict.pass) return deliver(attempts[attempts.length - 1], { passed: verdict.judged, judged: verdict.judged, attempts: n, reason: verdict.reason, score: verdict.score })
+    if (verdict.pass) {
+      return { result, stages, qa: { passed: verdict.judged, judged: verdict.judged, attempts: n, reason: verdict.reason, score: verdict.score } }
+    }
   }
-
   // Nothing passed: ship the best-scoring attempt, flagged. Ties/no scores → the last one.
   const best = attempts.reduce((b, a) => ((a.verdict.score ?? -1) > (b.verdict.score ?? -1) ? a : b), attempts[attempts.length - 1])
   console.error(`[fidelity-gate] ${label}: all ${maxAttempts} attempts failed — delivering attempt ${best.n} flagged (score=${best.verdict.score})`)
-  return deliver(best, { passed: false, judged: true, attempts: maxAttempts, reason: best.verdict.reason, score: best.verdict.score })
+  return { result: best.result, stages: best.stages, qa: { passed: false, judged: true, attempts: maxAttempts, reason: best.verdict.reason, score: best.verdict.score } }
 }
 
-function deliver(attempt, qa) {
-  replayUsage(attempt.stages)
-  return { ...attempt.result, qa }
+// Folds the per-step verdicts of one request into the single `qa` object the routes return.
+// `passed` is true only if every judged, still-relevant step passed; `attempts` counts every
+// generation made. A step marked `superseded: true` (e.g. a rejected edit-mode refinement
+// that was replaced by a create-mode regeneration) keeps its attempt count and shows up in
+// `steps` for the logs, but no longer decides the verdict — the image it judged did not ship.
+function combineQa(steps) {
+  const present = Object.entries(steps).filter(([, q]) => q)
+  if (!present.length) return undefined
+  const live = present.filter(([, q]) => !q.superseded)
+  const judged = live.some(([, q]) => q.judged)
+  const failed = live.find(([, q]) => q.judged && !q.passed)
+  const last = (live[live.length - 1] || present[present.length - 1])[1]
+  return {
+    passed: judged && !failed,
+    judged,
+    attempts: present.reduce((s, [, q]) => s + (q.attempts || 0), 0),
+    reason: failed ? `${failed[0]}: ${failed[1].reason}` : last.reason,
+    score: failed ? failed[1].score : last.score,
+    steps: Object.fromEntries(present),
+  }
 }
 
-module.exports = { judgeEvFidelity, withFidelityGate, parseVerdict, CORRECTIVE_PREFIX }
+function deliverUsage(...stageLists) {
+  for (const stages of stageLists) if (stages && stages.length) replayUsage(stages)
+}
+
+module.exports = { judgeEvFidelity, gatedStep, combineQa, deliverUsage, parseVerdict, CORRECTIVE_PREFIX }
