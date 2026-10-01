@@ -40,6 +40,14 @@
       "complexity": "worst",
       "notes": "Thin concentric lines + small serif text — worst case for miniature zones",
       "primaryColors": ["#14532D"]
+    },
+    {
+      "id": "favicon-lowres",
+      "companyName": "Harbor Bank",
+      "file": "logos/favicon-lowres.png",
+      "complexity": "production-realistic",
+      "notes": "128x128 icon-only favicon, the HUB wizard's auto-detected logo fallback (Google favicon service). Reproduces the 2026-09-30 Stage A input. Not part of the 5-logo default matrices — see simpleSceneFavicon.",
+      "primaryColors": ["#1F4E9C"]
     }
   ]
 }
