@@ -64,6 +64,15 @@ async function runSimpleSceneStage({
         includeRawReference: !!rawEvReferenceBuffer,
       })
 
+  // ORDER IS THE CONTRACT. The provider sends `[{text: prompt}, ...images]` with no label
+  // per image, so Gemini maps "IMAGE A/B/C" to the inline images purely by position. Each
+  // list below must match the letters its prompt assigns (see simple-scene-stage.test.js):
+  //   edit   (buildSimpleSceneEditPrompt): A = current scene, B = raw EV reference, C = logo
+  //   create (buildSimpleScenePrompt):     A = branded EV,    B = logo,             C = raw EV reference
+  // 2026-09-30 bug fix: create mode shipped as [branded, raw, logo] since PR #37 while the
+  // prompt said "IMAGE B = the logo" / "IMAGE C = the raw reference" — the structure anchor
+  // was being read as the client logo and the logo as the vehicle reference. Confirmed on a
+  // real Stage A deck (Uwharrie Bank, n8n exec 28927): generic box truck, no coffee-bean skirt.
   const images = isEditMode
     ? [
         { buffer: currentSceneBuffer, mimeType: sniffMime(currentSceneBuffer), role: 'primary' },
@@ -72,8 +81,8 @@ async function runSimpleSceneStage({
       ]
     : [
         { buffer: brandedEvBuffer, mimeType: sniffMime(brandedEvBuffer), role: 'primary' },
-        ...(rawEvReferenceBuffer ? [{ buffer: rawEvReferenceBuffer, mimeType: sniffMime(rawEvReferenceBuffer, rawEvReferenceUrl), role: 'ref' }] : []),
         { buffer: logoBuffer, mimeType: sniffMime(logoBuffer, String(logoSource)), role: 'ref' },
+        ...(rawEvReferenceBuffer ? [{ buffer: rawEvReferenceBuffer, mimeType: sniffMime(rawEvReferenceBuffer, rawEvReferenceUrl), role: 'ref' }] : []),
       ]
 
   const provider = getProvider(providerName)
