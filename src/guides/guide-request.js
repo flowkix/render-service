@@ -5,9 +5,10 @@
 // The route in server.js stays thin and mirrors /clt-alliance/request-guide.
 //
 // Contract (agreed with the landing pages, see snacket-website
-// docs/projects/cltivate-2026/BRIEF.md §6):
+// docs/projects/cltivate-2026/BRIEF.md §6 + §11 D14/T21a):
 //   body: { name, email, organization, audience, website /* honeypot */,
-//           utm_source, utm_medium, utm_campaign }
+//           utm_source, utm_medium, utm_campaign,
+//           title, works_with_sponsors, fits_where /* sponsor-renewal only, see SPONSORSHIP_FIELDS below */ }
 //   200 { ok: true } · 400 { ok: false, error } · 429 · 500
 
 // Static, pre-rendered PDFs served by the website itself — nothing is
@@ -34,6 +35,20 @@ const EVENT_BY_UTM_SOURCE = {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Johanna's sponsorship-pivot rewrite (BRIEF §11 D14, 2026-10-07): the
+// sponsor-renewal landing's lead form grows a 2nd step with 2 qualifying
+// questions, plus a Title/Role field in step 1. Only required for
+// 'sponsor-renewal' — community-investment (corporate) is untouched, still
+// just name/email/organization, per BRIEF §11 ("corporate is NOT part of
+// this pivot"). Enum values match the landing's <select> option values
+// exactly, agreed with Codex in TASKS.md T21a before either side built
+// against a guess.
+const WORKS_WITH_SPONSORS_VALUES = new Set(['yes', 'not_currently', 'not_sure'])
+const FITS_WHERE_VALUES = new Set([
+  'gala', 'conference', 'community_program', 'fundraiser',
+  'wellness_sports', 'volunteer_member', 'not_sure',
+])
 
 // Production site + this project's Vercel preview deployments
 // (snacket-website-<hash|git-branch>-flowkix.vercel.app), so the full funnel
@@ -90,6 +105,26 @@ function validateGuideRequest(body) {
   if (value.organization.length > 200) return { ok: false, error: 'organization must be 200 characters or fewer' }
   if (value.email.length > 320) return { ok: false, error: 'email must be 320 characters or fewer' }
 
+  // Step-2 sponsorship fields: required for sponsor-renewal only (its 2-step
+  // form), untouched/ignored for community-investment (BRIEF §11).
+  if (audience === 'sponsor-renewal') {
+    const { title, works_with_sponsors, fits_where } = b
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      return { ok: false, error: 'title is required' }
+    }
+    const trimmedTitle = title.trim()
+    if (trimmedTitle.length > 200) return { ok: false, error: 'title must be 200 characters or fewer' }
+    if (typeof works_with_sponsors !== 'string' || !WORKS_WITH_SPONSORS_VALUES.has(works_with_sponsors)) {
+      return { ok: false, error: 'works_with_sponsors must be one of: ' + [...WORKS_WITH_SPONSORS_VALUES].join(', ') }
+    }
+    if (typeof fits_where !== 'string' || !FITS_WHERE_VALUES.has(fits_where)) {
+      return { ok: false, error: 'fits_where must be one of: ' + [...FITS_WHERE_VALUES].join(', ') }
+    }
+    value.title = trimmedTitle
+    value.worksWithSponsors = works_with_sponsors
+    value.fitsWhere = fits_where
+  }
+
   return { ok: true, value }
 }
 
@@ -98,7 +133,7 @@ function validateGuideRequest(body) {
 // which had no company field).
 function buildLeadRecord(value) {
   const guide = GUIDES[value.audience]
-  return {
+  const record = {
     source: guide.source,
     stage: 'deck',
     deck_url: guide.pdfUrl,
@@ -113,12 +148,21 @@ function buildLeadRecord(value) {
       utm: value.utm,
     },
   }
+  // sponsor-renewal only (BRIEF §11 D14) — prospect_title is a real column
+  // (NOT NULL-free, text), the 2 qualifying answers are intake-only, no new
+  // columns needed for those.
+  if (value.audience === 'sponsor-renewal') {
+    record.prospect_title = value.title
+    record.intake_data.works_with_sponsors = value.worksWithSponsors
+    record.intake_data.fits_where = value.fitsWhere
+  }
+  return record
 }
 
 // Payload for the n8n `guide-request` webhook (delivery email + sales notify).
 function buildWebhookPayload(value, leadId) {
   const guide = GUIDES[value.audience]
-  return {
+  const payload = {
     name: value.name,
     email: value.email,
     organization: value.organization,
@@ -129,6 +173,16 @@ function buildWebhookPayload(value, leadId) {
     met_at_event: EVENT_BY_UTM_SOURCE[value.utm.source] || null,
     utm: value.utm,
   }
+  // sponsor-renewal only -- not used by the immediate delivery email today,
+  // but the day1/day7 follow-up workflow (TASKS.md T21c) reads leads.intake_data
+  // directly, not this webhook payload, so this is forwarded for completeness
+  // / future use, not a hard dependency of T21c.
+  if (value.audience === 'sponsor-renewal') {
+    payload.title = value.title
+    payload.works_with_sponsors = value.worksWithSponsors
+    payload.fits_where = value.fitsWhere
+  }
+  return payload
 }
 
 module.exports = {

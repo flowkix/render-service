@@ -802,6 +802,7 @@ app.post('/guides/request', async (req, res) => {
         prospect_name: lead.prospect_name,
         intake_data: lead.intake_data,
         ...(lead.met_at_event ? { met_at_event: lead.met_at_event } : {}),
+        ...(lead.prospect_title ? { prospect_title: lead.prospect_title } : {}),
       }).eq('id', leadId)
     } else {
       const { data: newLead, error: insertError } = await snacketOs
