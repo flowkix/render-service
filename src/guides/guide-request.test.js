@@ -18,6 +18,9 @@ const valid = {
   utm_source: 'cltivate',
   utm_medium: 'qr',
   utm_campaign: 'nonprofit_sponsor_review',
+  title: ' Events Director ',
+  works_with_sponsors: 'yes',
+  fits_where: 'gala',
 }
 
 test('valid request is trimmed and accepted', () => {
@@ -26,6 +29,9 @@ test('valid request is trimmed and accepted', () => {
   assert.strictEqual(r.value.name, 'Ana Pérez')
   assert.strictEqual(r.value.organization, 'Hope Charlotte')
   assert.deepStrictEqual(r.value.utm, { source: 'cltivate', medium: 'qr', campaign: 'nonprofit_sponsor_review' })
+  assert.strictEqual(r.value.title, 'Events Director')
+  assert.strictEqual(r.value.worksWithSponsors, 'yes')
+  assert.strictEqual(r.value.fitsWhere, 'gala')
 })
 
 test('honeypot filled → silently flagged as bot', () => {
@@ -80,6 +86,74 @@ test('evergreen traffic (no utm_source) has no event', () => {
   const payload = buildWebhookPayload(value, 'lead-1')
   assert.strictEqual(payload.guide_title, 'Make Your Community Investment Visible')
   assert.strictEqual(payload.lead_id, 'lead-1')
+})
+
+// --- T21a: BRIEF §11 D14, sponsor-renewal's 2-step form fields ---
+
+test('sponsor-renewal: missing title is rejected', () => {
+  assert.strictEqual(validateGuideRequest({ ...valid, title: '' }).error, 'title is required')
+  assert.strictEqual(validateGuideRequest({ ...valid, title: '   ' }).error, 'title is required')
+  const { title, ...withoutTitle } = valid
+  assert.strictEqual(validateGuideRequest(withoutTitle).error, 'title is required')
+})
+
+test('sponsor-renewal: oversize title is rejected', () => {
+  assert.strictEqual(validateGuideRequest({ ...valid, title: 'x'.repeat(201) }).ok, false)
+})
+
+test('sponsor-renewal: works_with_sponsors must be a known enum value', () => {
+  assert.match(validateGuideRequest({ ...valid, works_with_sponsors: 'maybe' }).error, /works_with_sponsors must be one of/)
+  assert.match(validateGuideRequest({ ...valid, works_with_sponsors: undefined }).error, /works_with_sponsors must be one of/)
+  for (const v of ['yes', 'not_currently', 'not_sure']) {
+    assert.strictEqual(validateGuideRequest({ ...valid, works_with_sponsors: v }).ok, true)
+  }
+})
+
+test('sponsor-renewal: fits_where must be a known enum value', () => {
+  assert.match(validateGuideRequest({ ...valid, fits_where: 'rooftop_party' }).error, /fits_where must be one of/)
+  for (const v of ['gala', 'conference', 'community_program', 'fundraiser', 'wellness_sports', 'volunteer_member', 'not_sure']) {
+    assert.strictEqual(validateGuideRequest({ ...valid, fits_where: v }).ok, true)
+  }
+})
+
+test('community-investment (corporate): the 3 sponsorship fields are not required at all', () => {
+  const r = validateGuideRequest({
+    name: 'Ben Lee', email: 'ben@example.org', organization: 'Acme Co',
+    audience: 'community-investment', website: '',
+  })
+  assert.strictEqual(r.ok, true)
+  assert.strictEqual(r.value.title, undefined)
+  assert.strictEqual(r.value.worksWithSponsors, undefined)
+})
+
+test('sponsor-renewal lead record carries prospect_title + intake_data answers; community-investment carries neither', () => {
+  const { value } = validateGuideRequest(valid)
+  const lead = buildLeadRecord(value)
+  assert.strictEqual(lead.prospect_title, 'Events Director')
+  assert.strictEqual(lead.intake_data.works_with_sponsors, 'yes')
+  assert.strictEqual(lead.intake_data.fits_where, 'gala')
+
+  const corporate = validateGuideRequest({
+    name: 'Ben Lee', email: 'ben@example.org', organization: 'Acme Co',
+    audience: 'community-investment', website: '',
+  }).value
+  const corporateLead = buildLeadRecord(corporate)
+  assert.strictEqual(corporateLead.prospect_title, undefined)
+  assert.strictEqual(corporateLead.intake_data.works_with_sponsors, undefined)
+})
+
+test('sponsor-renewal webhook payload carries the 3 fields; community-investment does not', () => {
+  const { value } = validateGuideRequest(valid)
+  const payload = buildWebhookPayload(value, 'lead-1')
+  assert.strictEqual(payload.title, 'Events Director')
+  assert.strictEqual(payload.fits_where, 'gala')
+
+  const corporate = validateGuideRequest({
+    name: 'Ben Lee', email: 'ben@example.org', organization: 'Acme Co',
+    audience: 'community-investment', website: '',
+  }).value
+  const corporatePayload = buildWebhookPayload(corporate, 'lead-2')
+  assert.strictEqual(corporatePayload.title, undefined)
 })
 
 test('CORS allows production and this project\'s Vercel previews only', () => {
