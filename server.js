@@ -741,7 +741,7 @@ app.post('/clt-alliance/request-guide', async (req, res) => {
   res.json({ ok: true })
 })
 
-// snacketnow.com/guides/* — SNACKET guide lead magnets (Non Profits Activation Guide,
+// snacketnow.com/guides/* — SNACKET guide lead magnets (Nonprofits Activation Guide,
 // Community Investment). Same shape as /clt-alliance/request-guide: honeypot + rate
 // limit + best-effort lead insert + awaited email send. Validation and record shapes
 // live in src/guides/guide-request.js. CORS also admits this project's Vercel
