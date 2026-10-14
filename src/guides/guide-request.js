@@ -17,7 +17,7 @@ const GUIDES = {
   'sponsor-renewal': {
     source: 'guide_sponsor_renewal',
     title: 'Nonprofits Activation Guide',
-    pdfUrl: 'https://www.snacketnow.com/guides/files/SNACKET_LeadMagnet_Nonprofit_EN_v2.pdf',
+    pdfUrl: 'https://www.snacketnow.com/guides/files/SNACKET_Nonprofit_Sponsorship_Deck_EN_v1.pdf',
     landingUrl: 'https://www.snacketnow.com/guides/sponsor-renewal',
   },
   'community-investment': {
