@@ -7,6 +7,7 @@ const {
   validateGuideRequest,
   buildLeadRecord,
   buildWebhookPayload,
+  buildLeadUpdate,
 } = require('./guide-request')
 
 const valid = {
@@ -165,4 +166,45 @@ test('CORS allows production and this project\'s Vercel previews only', () => {
   assert.ok(!isAllowedGuidesOrigin('https://snacket-website-x-flowkix.vercel.app.evil.com'))
   assert.ok(!isAllowedGuidesOrigin('http://snacket-website-x-flowkix.vercel.app'))
   assert.ok(!isAllowedGuidesOrigin(undefined))
+})
+
+// --- Repeat submit of the same email: refresh the existing lead in place ---
+
+test('repeat submit: update patch refreshes deck_url to the current guide PDF', () => {
+  const { value } = validateGuideRequest(valid)
+  const patch = buildLeadUpdate(buildLeadRecord(value))
+  assert.strictEqual(patch.deck_url, GUIDES['sponsor-renewal'].pdfUrl)
+  assert.strictEqual(patch.company_name, 'Hope Charlotte')
+  assert.strictEqual(patch.prospect_name, 'Ana Pérez')
+  assert.strictEqual(patch.prospect_title, 'Events Director')
+  assert.strictEqual(patch.met_at_event, 'CLTivate Community 2026')
+  assert.deepStrictEqual(patch.intake_data, buildLeadRecord(value).intake_data)
+})
+
+test('repeat submit: never touches stage, identity keys or follow-up flags', () => {
+  const { value } = validateGuideRequest(valid)
+  const patch = buildLeadUpdate(buildLeadRecord(value))
+  for (const k of ['stage', 'source', 'prospect_email', 'id', 'created_at']) {
+    assert.ok(!(k in patch), `patch must not include ${k}`)
+  }
+  for (const k of Object.keys(patch)) {
+    assert.ok(!/day1|day7|followup|follow_up/i.test(k), `patch must not include follow-up flag ${k}`)
+  }
+})
+
+test('repeat submit without an event UTM keeps the stored met_at_event (no null overwrite)', () => {
+  const { value } = validateGuideRequest({ ...valid, utm_source: '' })
+  const patch = buildLeadUpdate(buildLeadRecord(value))
+  assert.ok(!('met_at_event' in patch))
+  assert.strictEqual(patch.deck_url, GUIDES['sponsor-renewal'].pdfUrl)
+})
+
+test('repeat submit on corporate guide: no prospect_title key, deck_url still refreshed', () => {
+  const corporate = validateGuideRequest({
+    name: 'Ben Lee', email: 'ben@example.org', organization: 'Acme Co',
+    audience: 'community-investment', website: '',
+  }).value
+  const patch = buildLeadUpdate(buildLeadRecord(corporate))
+  assert.ok(!('prospect_title' in patch))
+  assert.strictEqual(patch.deck_url, GUIDES['community-investment'].pdfUrl)
 })

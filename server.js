@@ -19,7 +19,7 @@ const { runBranding, runFull, runSimpleFull, runDecorReference } = require('./sr
 const { meterGeneration, InsufficientCreditsError } = require('./src/ai-credits/metering')
 const { checkRateLimit } = require('./src/ev-engine/rate-limiter')
 const { checkSceneRateLimit } = require('./src/ev-engine/scene-rate-limiter')
-const { isAllowedGuidesOrigin, validateGuideRequest, buildLeadRecord, buildWebhookPayload } = require('./src/guides/guide-request')
+const { isAllowedGuidesOrigin, validateGuideRequest, buildLeadRecord, buildLeadUpdate, buildWebhookPayload } = require('./src/guides/guide-request')
 const { checkSimpleSceneRateLimit } = require('./src/ev-engine/scene-simple-rate-limiter')
 const { checkBrandingRateLimit } = require('./src/ev-engine/branding-rate-limiter')
 const { checkDecorReferenceRateLimit } = require('./src/ev-engine/decor-reference-rate-limiter')
@@ -797,13 +797,10 @@ app.post('/guides/request', async (req, res) => {
 
     if (existingLead) {
       leadId = existingLead.id
-      await snacketOs.from('leads').update({
-        company_name: lead.company_name,
-        prospect_name: lead.prospect_name,
-        intake_data: lead.intake_data,
-        ...(lead.met_at_event ? { met_at_event: lead.met_at_event } : {}),
-        ...(lead.prospect_title ? { prospect_title: lead.prospect_title } : {}),
-      }).eq('id', leadId)
+      const { error: updateError } = await snacketOs.from('leads')
+        .update(buildLeadUpdate(lead))
+        .eq('id', leadId)
+      if (updateError) console.error('[guides-request] lead update FAILED:', updateError.message)
     } else {
       const { data: newLead, error: insertError } = await snacketOs
         .from('leads')
