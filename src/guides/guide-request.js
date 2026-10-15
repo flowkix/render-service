@@ -159,6 +159,29 @@ function buildLeadRecord(value) {
   return record
 }
 
+// Patch for an existing lead when the same email requests the same guide
+// again (one Pipeline card per email per guide). Refreshes what the prospect
+// just told us plus deck_url, so the lead always points at the current PDF.
+// Deliberately NOT included:
+//  - stage: a repeat request must never regress a lead Johanna already moved
+//    along the Pipeline back to 'deck'.
+//  - source / prospect_email: they are the lookup keys.
+//  - day1/day7 follow-up flags: never part of the record, so a repeat submit
+//    cannot re-trigger (or reset) the n8n follow-up sequence.
+//  - met_at_event / prospect_title when the new submit has none: a later
+//    evergreen visit (no utm_source) must not wipe a stored event attribution
+//    or title.
+function buildLeadUpdate(lead) {
+  return {
+    deck_url: lead.deck_url,
+    company_name: lead.company_name,
+    prospect_name: lead.prospect_name,
+    intake_data: lead.intake_data,
+    ...(lead.met_at_event ? { met_at_event: lead.met_at_event } : {}),
+    ...(lead.prospect_title ? { prospect_title: lead.prospect_title } : {}),
+  }
+}
+
 // Payload for the n8n `guide-request` webhook (delivery email + sales notify).
 function buildWebhookPayload(value, leadId) {
   const guide = GUIDES[value.audience]
@@ -190,5 +213,6 @@ module.exports = {
   isAllowedGuidesOrigin,
   validateGuideRequest,
   buildLeadRecord,
+  buildLeadUpdate,
   buildWebhookPayload,
 }
